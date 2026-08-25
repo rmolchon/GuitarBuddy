@@ -4,10 +4,10 @@ struct RootTabView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                ComingSoonView(feature: .tuner)
+                TunerView()
             }
             .tabItem {
-                Label(UpcomingFeature.tuner.title, systemImage: UpcomingFeature.tuner.systemImage)
+                Label("Tuner", systemImage: "tuningfork")
             }
 
             NavigationStack {

@@ -1,5 +1,16 @@
 import AVFoundation
 
+enum AudioEngineControllerError: LocalizedError {
+    case invalidInputFormat
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidInputFormat:
+            return "Microphone input isn't available. Check that microphone access is allowed in Settings, then try again."
+        }
+    }
+}
+
 final class AudioEngineController {
     private let engine: AVAudioEngine
     private let pitchDetector: PitchDetecting
@@ -25,6 +36,9 @@ final class AudioEngineController {
     func start() throws {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw AudioEngineControllerError.invalidInputFormat
+        }
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
             self?.handle(buffer)
         }

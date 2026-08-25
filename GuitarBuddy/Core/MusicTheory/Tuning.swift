@@ -1,4 +1,4 @@
-struct Tuning: Equatable {
+struct Tuning: Hashable {
     let name: String
     let stringFrequencies: [Double]
 
