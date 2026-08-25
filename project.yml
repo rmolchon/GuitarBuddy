@@ -21,6 +21,9 @@ targets:
       properties:
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "GuitarBuddy uses the microphone to detect the pitch of your guitar for tuning and other audio tools."
+        CFBundleDisplayName: "GuitarBuddy"
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.guitarbuddy.app
