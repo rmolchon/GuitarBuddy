@@ -82,10 +82,10 @@ TDD is required: write the failing test file before its implementation file.
 ## Build order
 
 1. ~~Scaffold project (`project.yml`, `.gitignore`, app shell, 4-tab nav)~~ — done.
-2. Music theory core, test-first: `ChordTests`/`KeyFinderTests` → `Note`, `ChordQuality`, `Chord`, `Key`, `KeySignatureTable`, `KeyFinder`. — **in progress**, `ChordTests.swift` written, implementation not started.
-3. Audio math core, test-first: `PitchDetectorTests`/`FrequencyToNoteTests` (synthetic sine fixtures) → `PitchDetectorProtocol`, `PitchDetector`, `FrequencyToNote`.
-4. Tuning model, test-first: `TuningTests` → `Tuning.swift` presets (Standard, Drop D, Open G, Open D, DADGAD, Half-Step Down).
-5. `AudioEngineController` with injectable `PitchDetecting`, integration-tested via synthetic buffers.
+2. ~~Music theory core, test-first: `ChordTests`/`KeyFinderTests` → `Note`, `ChordQuality`, `Chord`, `Key`, `KeySignatureTable`, `KeyFinder`~~ — done.
+3. ~~Audio math core, test-first: `PitchDetectorTests`/`FrequencyToNoteTests` (synthetic sine fixtures) → `PitchDetectorProtocol`, `PitchDetector`, `FrequencyToNote`~~ — done.
+4. ~~Tuning model, test-first: `TuningTests` → `Tuning.swift` presets (Standard, Drop D, Open G, Open D, DADGAD, Half-Step Down)~~ — done.
+5. `AudioEngineController` with injectable `PitchDetecting`, integration-tested via synthetic buffers. — **in progress**.
 6. `AudioTranscriptionService` protocol stub (Phase-2 seam) — cheap to add while the audio module is fresh.
 7. Tuner UI: `TunerViewModel` → `CentsMeterView` → `StringIndicatorView` → `TuningPickerView` → `TunerView`; wire into `RootTabView`.
 8. Key Finder UI: `KeyFinderViewModel` → `ChordPickerView` → `ChordSequenceView` → `KeyResultView` → `KeyFinderView`; wire into `RootTabView`.
