@@ -10,6 +10,7 @@ struct TuningPickerView: View {
             }
         }
         .pickerStyle(.menu)
+        .accessibilityIdentifier("tuningPicker")
     }
 }
 

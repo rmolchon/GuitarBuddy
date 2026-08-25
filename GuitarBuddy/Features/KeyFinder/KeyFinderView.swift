@@ -18,6 +18,7 @@ struct KeyFinderView: View {
 
                 Button("Clear", role: .destructive, action: viewModel.clear)
                     .font(.footnote)
+                    .accessibilityIdentifier("clearChordsButton")
             }
 
             Spacer()
