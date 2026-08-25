@@ -85,12 +85,14 @@ TDD is required: write the failing test file before its implementation file.
 2. ~~Music theory core, test-first: `ChordTests`/`KeyFinderTests` → `Note`, `ChordQuality`, `Chord`, `Key`, `KeySignatureTable`, `KeyFinder`~~ — done.
 3. ~~Audio math core, test-first: `PitchDetectorTests`/`FrequencyToNoteTests` (synthetic sine fixtures) → `PitchDetectorProtocol`, `PitchDetector`, `FrequencyToNote`~~ — done.
 4. ~~Tuning model, test-first: `TuningTests` → `Tuning.swift` presets (Standard, Drop D, Open G, Open D, DADGAD, Half-Step Down)~~ — done.
-5. `AudioEngineController` with injectable `PitchDetecting`, integration-tested via synthetic buffers. — **in progress**.
-6. `AudioTranscriptionService` protocol stub (Phase-2 seam) — cheap to add while the audio module is fresh.
-7. Tuner UI: `TunerViewModel` → `CentsMeterView` → `StringIndicatorView` → `TuningPickerView` → `TunerView`; wire into `RootTabView`.
-8. Key Finder UI: `KeyFinderViewModel` → `ChordPickerView` → `ChordSequenceView` → `KeyResultView` → `KeyFinderView`; wire into `RootTabView`.
-9. UI tests: `TunerFlowUITests`, `KeyFinderFlowUITests`.
-10. Manual on-device verification with a real guitar (tuner accuracy vs. a known reference) — cannot be automated.
+5. ~~`AudioEngineController` with injectable `PitchDetecting`, integration-tested via synthetic buffers~~ — done.
+6. ~~`AudioTranscriptionService` protocol stub (Phase-2 seam)~~ — done.
+7. ~~Tuner UI: `TunerViewModel` → `CentsMeterView` → `StringIndicatorView` → `TuningPickerView` → `TunerView`; wire into `RootTabView`~~ — done.
+8. ~~Key Finder UI: `KeyFinderViewModel` → `ChordPickerView` → `ChordSequenceView` → `KeyResultView` → `KeyFinderView`; wire into `RootTabView`~~ — done.
+9. ~~UI tests: `TunerFlowUITests`, `KeyFinderFlowUITests`~~ — done.
+10. Manual on-device verification with a real guitar (tuner accuracy vs. a known reference) — **remaining**; cannot be automated.
+
+Also added beyond the original build order: Dark Mode support (`AppearanceMode`, applied at the app root, with a per-screen toolbar picker to override system/light/dark, persisted via `@AppStorage`).
 
 ## Conventions
 
