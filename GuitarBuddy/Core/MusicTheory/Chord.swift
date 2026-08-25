@@ -4,6 +4,10 @@ struct Chord: Equatable {
     let root: PitchClass
     let quality: ChordQuality
 
+    var displayName: String {
+        "\(root.displayName)\(quality.displaySuffix)"
+    }
+
     static func parse(_ symbol: String) -> Chord? {
         let normalized = symbol
             .replacingOccurrences(of: "\u{266F}", with: "#")

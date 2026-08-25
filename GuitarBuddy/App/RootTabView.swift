@@ -14,11 +14,11 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                ComingSoonView(feature: .keyFinder)
+                KeyFinderView()
                     .toolbar { appearanceToolbarItem }
             }
             .tabItem {
-                Label(UpcomingFeature.keyFinder.title, systemImage: UpcomingFeature.keyFinder.systemImage)
+                Label("Key Finder", systemImage: "music.quarternote.3")
             }
 
             NavigationStack {

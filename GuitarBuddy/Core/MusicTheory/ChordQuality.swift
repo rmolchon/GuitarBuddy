@@ -30,6 +30,20 @@ enum ChordQuality: Equatable {
         }
     }
 
+    var displaySuffix: String {
+        switch self {
+        case .major: return ""
+        case .minor: return "m"
+        case .dominant7: return "7"
+        case .minor7: return "m7"
+        case .major7: return "maj7"
+        case .diminished: return "dim"
+        case .augmented: return "aug"
+        case .sus2: return "sus2"
+        case .sus4: return "sus4"
+        }
+    }
+
     var family: QualityFamily {
         switch self {
         case .major, .dominant7, .major7, .augmented, .sus2, .sus4:
