@@ -1,13 +1,11 @@
 import SwiftUI
 
 enum UpcomingFeature {
-    case keyFinder
     case humMode
     case transcribe
 
     var title: String {
         switch self {
-        case .keyFinder: "Key Finder"
         case .humMode: "Hum Mode"
         case .transcribe: "Transcribe"
         }
@@ -15,7 +13,6 @@ enum UpcomingFeature {
 
     var systemImage: String {
         switch self {
-        case .keyFinder: "music.quarternote.3"
         case .humMode: "waveform"
         case .transcribe: "music.note.list"
         }

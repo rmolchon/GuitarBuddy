@@ -87,4 +87,49 @@ final class ChordTests: XCTestCase {
     func test_returnsNilForGarbageSuffix() {
         XCTAssertNil(Chord.parse("Cxyz123"))
     }
+
+    func test_displayNameForMajorChord() {
+        XCTAssertEqual(Chord(root: .c, quality: .major).displayName, "C")
+    }
+
+    func test_displayNameForMinorChord() {
+        XCTAssertEqual(Chord(root: .d, quality: .minor).displayName, "Dm")
+    }
+
+    func test_displayNameForSharpRootDominantSeventh() {
+        XCTAssertEqual(Chord(root: .cSharp, quality: .dominant7).displayName, "C#7")
+    }
+
+    func test_displayNameForFlatRootRendersAsSharp() {
+        // Bb is stored as PitchClass.aSharp, so it round-trips through displayName as "A#", not "Bb".
+        XCTAssertEqual(Chord(root: .aSharp, quality: .major).displayName, "A#")
+    }
+
+    func test_displayNameForMinorSeventh() {
+        XCTAssertEqual(Chord(root: .a, quality: .minor7).displayName, "Am7")
+    }
+
+    func test_displayNameForMajorSeventh() {
+        XCTAssertEqual(Chord(root: .f, quality: .major7).displayName, "Fmaj7")
+    }
+
+    func test_displayNameForDiminished() {
+        XCTAssertEqual(Chord(root: .b, quality: .diminished).displayName, "Bdim")
+    }
+
+    func test_displayNameForAugmented() {
+        XCTAssertEqual(Chord(root: .c, quality: .augmented).displayName, "Caug")
+    }
+
+    func test_displayNameForSus2AndSus4() {
+        XCTAssertEqual(Chord(root: .d, quality: .sus2).displayName, "Dsus2")
+        XCTAssertEqual(Chord(root: .d, quality: .sus4).displayName, "Dsus4")
+    }
+
+    func test_displayNameRoundTripsThroughParse() {
+        for symbol in ["C", "Dm", "G7", "Am7", "Fmaj7", "Bdim", "Caug", "Dsus2", "Dsus4"] {
+            let chord = Chord.parse(symbol)
+            XCTAssertEqual(chord?.displayName, symbol, "round-trip failed for \(symbol)")
+        }
+    }
 }
