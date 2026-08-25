@@ -7,6 +7,7 @@ struct KeyResultView: View {
         VStack(spacing: 8) {
             Text(headline)
                 .font(.title.bold())
+                .accessibilityIdentifier("keyResultHeadline")
             Text("\(Int(result.confidence * 100))% confidence")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

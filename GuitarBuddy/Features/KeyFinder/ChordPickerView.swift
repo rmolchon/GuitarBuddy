@@ -13,15 +13,18 @@ struct ChordPickerView: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
                     .onSubmit(onAdd)
+                    .accessibilityIdentifier("chordInputField")
 
                 Button("Add", action: onAdd)
                     .disabled(chordInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("addChordButton")
             }
 
             if let invalidInputMessage {
                 Text(invalidInputMessage)
                     .font(.footnote)
                     .foregroundStyle(.red)
+                    .accessibilityIdentifier("invalidChordMessage")
             }
         }
     }

@@ -24,17 +24,21 @@ struct ChordSequenceView: View {
         HStack(spacing: 4) {
             Text(chord.displayName)
                 .font(.headline)
+                .accessibilityIdentifier("chordChip_\(chord.displayName)")
             Button {
                 onRemove(index)
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
+            .accessibilityIdentifier("removeChord_\(chord.displayName)")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color.secondary.opacity(0.15))
         .clipShape(Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chordChipContainer_\(chord.displayName)")
     }
 }
 
