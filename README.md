@@ -41,6 +41,8 @@ xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iP
 
 Or use the Xcode Test navigator (⌘U).
 
+For a full walkthrough of building and testing with either Xcode or VS Code — including running individual tests, reading coverage reports, and troubleshooting common setup issues — see **[BUILDING.md](BUILDING.md)**.
+
 ## Project Structure
 
 ```
