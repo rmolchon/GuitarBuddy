@@ -2,8 +2,9 @@ enum AudioSource {
     case microphone
 }
 
-struct TranscriptionEvent: Equatable {
-    let note: DetectedNote
+enum TranscriptionEvent: Equatable {
+    case note(DetectedNote)
+    case chord(Chord)
 }
 
 protocol AudioTranscriptionService {

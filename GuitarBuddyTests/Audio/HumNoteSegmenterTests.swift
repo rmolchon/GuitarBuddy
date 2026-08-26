@@ -9,43 +9,43 @@ final class HumNoteSegmenterTests: XCTestCase {
         // Arrange
         let segmenter = HumNoteSegmenter()
         // Act
-        let events = [a4, a4, a4, a4, a4].compactMap { segmenter.process(frequency: $0) }
+        let notes = notes(from: [a4, a4, a4, a4, a4].compactMap { segmenter.process(frequency: $0) })
         // Assert
-        XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events.first?.note.pitchClass, .a)
-        XCTAssertEqual(events.first?.note.octave, 4)
+        XCTAssertEqual(notes.count, 1)
+        XCTAssertEqual(notes.first?.pitchClass, .a)
+        XCTAssertEqual(notes.first?.octave, 4)
     }
 
     func test_noteChangeHeldLongEnoughEmitsTwoEvents() {
         // Arrange
         let segmenter = HumNoteSegmenter()
         // Act
-        let events = [a4, a4, b4, b4, b4].compactMap { segmenter.process(frequency: $0) }
+        let notes = notes(from: [a4, a4, b4, b4, b4].compactMap { segmenter.process(frequency: $0) })
         // Assert
-        XCTAssertEqual(events.count, 2)
-        XCTAssertEqual(events[0].note.pitchClass, .a)
-        XCTAssertEqual(events[1].note.pitchClass, .b)
+        XCTAssertEqual(notes.count, 2)
+        XCTAssertEqual(notes[0].pitchClass, .a)
+        XCTAssertEqual(notes[1].pitchClass, .b)
     }
 
     func test_singleFrameBlipThatRevertsEmitsNoEvent() {
         // Arrange
         let segmenter = HumNoteSegmenter()
         // Act
-        let events = [a4, a4, b4, a4, a4].compactMap { segmenter.process(frequency: $0) }
+        let notes = notes(from: [a4, a4, b4, a4, a4].compactMap { segmenter.process(frequency: $0) })
         // Assert
-        XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events.first?.note.pitchClass, .a)
+        XCTAssertEqual(notes.count, 1)
+        XCTAssertEqual(notes.first?.pitchClass, .a)
     }
 
     func test_silenceGapBetweenIdenticalNotesReArmsAndEmitsTwoEvents() {
         // Arrange
         let segmenter = HumNoteSegmenter()
         // Act
-        let events = [a4, a4, nil, nil, a4, a4].compactMap { segmenter.process(frequency: $0) }
+        let notes = notes(from: [a4, a4, nil, nil, a4, a4].compactMap { segmenter.process(frequency: $0) })
         // Assert
-        XCTAssertEqual(events.count, 2)
-        XCTAssertEqual(events[0].note.pitchClass, .a)
-        XCTAssertEqual(events[1].note.pitchClass, .a)
+        XCTAssertEqual(notes.count, 2)
+        XCTAssertEqual(notes[0].pitchClass, .a)
+        XCTAssertEqual(notes[1].pitchClass, .a)
     }
 
     func test_allNilStreamEmitsNoEvents() {
@@ -66,5 +66,12 @@ final class HumNoteSegmenterTests: XCTestCase {
         let events = [a4].compactMap { segmenter.process(frequency: $0) }
         // Assert
         XCTAssertTrue(events.isEmpty)
+    }
+
+    private func notes(from events: [TranscriptionEvent]) -> [DetectedNote] {
+        events.compactMap { event in
+            if case .note(let note) = event { return note }
+            return nil
+        }
     }
 }

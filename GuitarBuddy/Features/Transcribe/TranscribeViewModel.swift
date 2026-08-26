@@ -2,15 +2,15 @@ import Foundation
 import Observation
 
 @Observable
-final class HumModeViewModel {
+final class TranscribeViewModel {
     private let transcriptionService: AudioTranscriptionService
     private var transcriptionTask: Task<Void, Never>?
 
     private(set) var isListening = false
     private(set) var errorMessage: String?
-    private(set) var notes: [DetectedNote] = []
+    private(set) var chords: [Chord] = []
 
-    init(transcriptionService: AudioTranscriptionService = HumTranscriptionService()) {
+    init(transcriptionService: AudioTranscriptionService = StrumTranscriptionService()) {
         self.transcriptionService = transcriptionService
     }
 
@@ -22,8 +22,8 @@ final class HumModeViewModel {
         transcriptionTask = Task { [weak self] in
             do {
                 for try await event in stream {
-                    if case .note(let note) = event {
-                        self?.notes.append(note)
+                    if case .chord(let chord) = event {
+                        self?.chords.append(chord)
                     }
                 }
             } catch {
@@ -39,6 +39,6 @@ final class HumModeViewModel {
     }
 
     func clear() {
-        notes.removeAll()
+        chords.removeAll()
     }
 }
