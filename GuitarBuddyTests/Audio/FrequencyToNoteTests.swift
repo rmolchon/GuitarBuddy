@@ -55,4 +55,27 @@ final class FrequencyToNoteTests: XCTestCase {
     func test_returnsNilForNegativeFrequency() {
         XCTAssertNil(FrequencyToNote.note(forFrequency: -10))
     }
+
+    func test_frequencyForPitchClassReturnsA4ReferenceFrequency() {
+        let frequency = FrequencyToNote.frequency(forPitchClass: .a, octave: 4)
+        XCTAssertEqual(frequency, 440.0, accuracy: 0.001)
+    }
+
+    func test_frequencyForPitchClassMatchesKnownLowE2Frequency() {
+        let frequency = FrequencyToNote.frequency(forPitchClass: .e, octave: 2)
+        XCTAssertEqual(frequency, 82.4, accuracy: 0.1)
+    }
+
+    func test_frequencyForPitchClassRespectsNonDefaultReferencePitch() {
+        let frequency = FrequencyToNote.frequency(forPitchClass: .a, octave: 4, referencePitch: 432.0)
+        XCTAssertEqual(frequency, 432.0, accuracy: 0.001)
+    }
+
+    func test_frequencyForPitchClassRoundTripsThroughNoteForFrequency() {
+        let frequency = FrequencyToNote.frequency(forPitchClass: .fSharp, octave: 3)
+        let note = FrequencyToNote.note(forFrequency: frequency)
+        XCTAssertEqual(note?.pitchClass, .fSharp)
+        XCTAssertEqual(note?.octave, 3)
+        XCTAssertEqual(note?.cents ?? .nan, 0, accuracy: 0.01)
+    }
 }

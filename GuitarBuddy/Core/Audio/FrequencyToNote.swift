@@ -22,4 +22,10 @@ enum FrequencyToNote {
 
         return DetectedNote(pitchClass: PitchClass(rawValue: pitchClassIndex)!, octave: octave, cents: cents)
     }
+
+    static func frequency(forPitchClass pitchClass: PitchClass, octave: Int, referencePitch: Double = 440.0) -> Double {
+        let midiNumber = (octave + 1) * 12 + pitchClass.rawValue
+        let semitonesFromA4 = Double(midiNumber - a4MidiNumber)
+        return referencePitch * pow(2, semitonesFromA4 / 12)
+    }
 }

@@ -1,55 +1,21 @@
 import Foundation
 
-/// Collapses a jittery, periodically-sampled frequency stream into discrete note-onset events.
-/// A candidate note must repeat for `requiredConsecutiveFrames` frames before it's confirmed
-/// (debounces vibrato/breath blips), and only a change from the last confirmed note emits an
-/// event. Silence resets all state so the same pitch hummed again after a pause re-emits.
+/// Collapses a jittery frequency stream into discrete note-onset events using a `FrameDebouncer`,
+/// mapping raw frequency readings to notes via `FrequencyToNote` first. Notes are compared by
+/// `pitchClass`/`octave` only (not full `Equatable`), since `cents` jitters every frame.
 final class HumNoteSegmenter {
     private let referencePitch: Double
-    private let requiredConsecutiveFrames: Int
-
-    private var candidateNote: DetectedNote?
-    private var candidateStreak = 0
-    private var confirmedNote: DetectedNote?
+    private let debouncer: FrameDebouncer<DetectedNote>
 
     init(referencePitch: Double = 440.0, requiredConsecutiveFrames: Int = 2) {
         self.referencePitch = referencePitch
-        self.requiredConsecutiveFrames = requiredConsecutiveFrames
+        self.debouncer = FrameDebouncer(requiredConsecutiveFrames: requiredConsecutiveFrames) { lhs, rhs in
+            lhs.pitchClass == rhs.pitchClass && lhs.octave == rhs.octave
+        }
     }
 
     func process(frequency: Double?) -> TranscriptionEvent? {
-        guard let frequency, let note = FrequencyToNote.note(forFrequency: frequency, referencePitch: referencePitch) else {
-            reset()
-            return nil
-        }
-
-        updateCandidate(with: note)
-
-        guard candidateStreak >= requiredConsecutiveFrames, !matches(note, confirmedNote) else {
-            return nil
-        }
-
-        confirmedNote = note
-        return TranscriptionEvent(note: note)
-    }
-
-    private func updateCandidate(with note: DetectedNote) {
-        if matches(note, candidateNote) {
-            candidateStreak += 1
-        } else {
-            candidateNote = note
-            candidateStreak = 1
-        }
-    }
-
-    private func matches(_ lhs: DetectedNote, _ rhs: DetectedNote?) -> Bool {
-        guard let rhs else { return false }
-        return lhs.pitchClass == rhs.pitchClass && lhs.octave == rhs.octave
-    }
-
-    private func reset() {
-        candidateNote = nil
-        candidateStreak = 0
-        confirmedNote = nil
+        let note = frequency.flatMap { FrequencyToNote.note(forFrequency: $0, referencePitch: referencePitch) }
+        return debouncer.process(note).map(TranscriptionEvent.note)
     }
 }

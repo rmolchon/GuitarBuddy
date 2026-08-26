@@ -30,11 +30,11 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                ComingSoonView(feature: .transcribe)
+                TranscribeView()
                     .toolbar { appearanceToolbarItem }
             }
             .tabItem {
-                Label(UpcomingFeature.transcribe.title, systemImage: UpcomingFeature.transcribe.systemImage)
+                Label("Transcribe", systemImage: "music.note.list")
             }
         }
     }

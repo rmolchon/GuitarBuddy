@@ -1,28 +1,28 @@
 import XCTest
 @testable import GuitarBuddy
 
-final class HumModeViewModelTests: XCTestCase {
-    func test_startSetsIsListeningAndAppendsNotesAsEventsArrive() async {
+final class TranscribeViewModelTests: XCTestCase {
+    func test_startSetsIsListeningAndAppendsChordsAsEventsArrive() async {
         // Arrange
         let fake = FakeAudioTranscriptionService()
         fake.eventsToYield = [
-            .note(DetectedNote(pitchClass: .c, octave: 4, cents: 0)),
-            .note(DetectedNote(pitchClass: .e, octave: 4, cents: 0))
+            .chord(Chord(root: .c, quality: .major)),
+            .chord(Chord(root: .a, quality: .minor))
         ]
-        let viewModel = HumModeViewModel(transcriptionService: fake)
+        let viewModel = TranscribeViewModel(transcriptionService: fake)
         // Act
         viewModel.start()
         // Assert
         XCTAssertTrue(viewModel.isListening)
-        await waitUntil { viewModel.notes.count == 2 }
-        XCTAssertEqual(viewModel.notes.map(\.pitchClass), [.c, .e])
+        await waitUntil { viewModel.chords.count == 2 }
+        XCTAssertEqual(viewModel.chords, [Chord(root: .c, quality: .major), Chord(root: .a, quality: .minor)])
     }
 
     func test_streamErrorSetsErrorMessageButLeavesIsListeningUntilExplicitStop() async {
         // Arrange
         let fake = FakeAudioTranscriptionService()
-        fake.errorToThrow = HumTranscriptionTestError.microphoneUnavailable
-        let viewModel = HumModeViewModel(transcriptionService: fake)
+        fake.errorToThrow = TranscribeTestError.microphoneUnavailable
+        let viewModel = TranscribeViewModel(transcriptionService: fake)
         // Act
         viewModel.start()
         // Assert
@@ -33,17 +33,33 @@ final class HumModeViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isListening)
     }
 
-    func test_clearRemovesAllCollectedNotes() async {
+    func test_clearRemovesAllCollectedChords() async {
         // Arrange
         let fake = FakeAudioTranscriptionService()
-        fake.eventsToYield = [.note(DetectedNote(pitchClass: .a, octave: 4, cents: 0))]
-        let viewModel = HumModeViewModel(transcriptionService: fake)
+        fake.eventsToYield = [.chord(Chord(root: .g, quality: .major))]
+        let viewModel = TranscribeViewModel(transcriptionService: fake)
         viewModel.start()
-        await waitUntil { viewModel.notes.count == 1 }
+        await waitUntil { viewModel.chords.count == 1 }
         // Act
         viewModel.clear()
         // Assert
-        XCTAssertTrue(viewModel.notes.isEmpty)
+        XCTAssertTrue(viewModel.chords.isEmpty)
+    }
+
+    func test_noteEventsInTheStreamAreIgnored() async {
+        // Arrange: defensive — this service only ever yields .chord, but the shared
+        // TranscriptionEvent type also has a .note case (used by Hum Mode).
+        let fake = FakeAudioTranscriptionService()
+        fake.eventsToYield = [
+            .note(DetectedNote(pitchClass: .c, octave: 4, cents: 0)),
+            .chord(Chord(root: .d, quality: .minor))
+        ]
+        let viewModel = TranscribeViewModel(transcriptionService: fake)
+        // Act
+        viewModel.start()
+        // Assert
+        await waitUntil { viewModel.chords.count == 1 }
+        XCTAssertEqual(viewModel.chords, [Chord(root: .d, quality: .minor)])
     }
 
     private func waitUntil(_ condition: @escaping () -> Bool, timeout: TimeInterval = 1.0) async {
@@ -54,7 +70,7 @@ final class HumModeViewModelTests: XCTestCase {
     }
 }
 
-private enum HumTranscriptionTestError: Error {
+private enum TranscribeTestError: Error {
     case microphoneUnavailable
 }
 
