@@ -2,7 +2,9 @@ enum AudioSource {
     case microphone
 }
 
-struct TranscriptionEvent {}
+struct TranscriptionEvent: Equatable {
+    let note: DetectedNote
+}
 
 protocol AudioTranscriptionService {
     func transcribe(audioSource: AudioSource) -> AsyncThrowingStream<TranscriptionEvent, Error>

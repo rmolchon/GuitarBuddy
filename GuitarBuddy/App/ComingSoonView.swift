@@ -1,19 +1,16 @@
 import SwiftUI
 
 enum UpcomingFeature {
-    case humMode
     case transcribe
 
     var title: String {
         switch self {
-        case .humMode: "Hum Mode"
         case .transcribe: "Transcribe"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .humMode: "waveform"
         case .transcribe: "music.note.list"
         }
     }
@@ -38,5 +35,5 @@ struct ComingSoonView: View {
 }
 
 #Preview {
-    ComingSoonView(feature: .humMode)
+    ComingSoonView(feature: .transcribe)
 }

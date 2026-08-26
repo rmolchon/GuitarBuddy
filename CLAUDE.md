@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this is
 
-GuitarBuddy is a native Swift/SwiftUI iOS app (iOS 17+ deployment target) offering tools for guitar players. V1 scope is **Tuner** + **Key Finder** only. Hum Mode and Transcribe are Phase 2 and deliberately not implemented yet — see "Phase 2 seam" below for what must stay in place to support them later.
+GuitarBuddy is a native Swift/SwiftUI iOS app (iOS 17+ deployment target) offering tools for guitar players. V1 scope was **Tuner** + **Key Finder**; **Hum Mode** (hum-to-note transcription) has since been added. **Transcribe** is the one remaining Phase 2 feature, deliberately not implemented yet — see "Phase 2 seam" below for what must stay in place to support it later.
 
 ## Project setup
 
@@ -22,13 +22,16 @@ GuitarBuddy/
   Features/
     Tuner/                 # TunerView, TunerViewModel, TuningPickerView, StringIndicatorView, CentsMeterView
     KeyFinder/              # KeyFinderView, KeyFinderViewModel, ChordPickerView, ChordSequenceView, KeyResultView
+    HumMode/                # HumModeView, HumModeViewModel, HumNoteHistoryView
   Core/
     Audio/                 # PitchDetectorProtocol, PitchDetector (YIN), AudioEngineController,
-                            # AudioTranscriptionService (Phase-2 seam), FrequencyToNote
+                            # AudioTranscriptionService (protocol) + HumTranscriptionService (concrete),
+                            # HumNoteSegmenter, FrequencyToNote
     MusicTheory/            # Note, Chord, ChordQuality, Tuning, Key, KeySignatureTable, KeyFinder
   Resources/                # Assets.xcassets, Info.plist
 GuitarBuddyTests/
-  Audio/                    # PitchDetectorTests, FrequencyToNoteTests
+  Audio/                    # PitchDetectorTests, FrequencyToNoteTests, HumNoteSegmenterTests
+  HumMode/                  # HumModeViewModelTests
   MusicTheory/               # ChordTests, KeyFinderTests, TuningTests
 GuitarBuddyUITests/
   TunerFlowUITests.swift
@@ -49,13 +52,20 @@ GuitarBuddyUITests/
 - `Chord.parse(_ symbol: String) -> Chord?` normalizes chord-symbol strings (`C`, `Dm`, `F#`, `Bb`, `G7`, `Am7`, `Fmaj7`, `Bdim`, `Caug`, `Dsus2/4`, unicode `♯`/`♭`, case-insensitive) into `root: PitchClass` + `quality: ChordQuality`.
 - `KeyFinder.findKey(for: [Chord]) -> KeyMatchResult` is a pure, dependency-free function: precompute diatonic scale-degree chord slots (I, ii, iii, IV, V, vi, vii°) for each of the 12 major keys, match loosely by quality-family (major/minor/diminished) so `G`/`G7`/`Gmaj7` all satisfy the V slot, score by fraction of diatonic input chords, and break ties by (1) tonic/relative-minor presence, then (2) V/V7 presence.
 
+### Hum Mode
+
+- Feature: hum-to-note transcription. The user hums, and `HumModeView` displays the sequence of discrete notes detected as a scrollable chip history (`HumNoteHistoryView`, modeled on Key Finder's `ChordSequenceView`) — order and identity only, no durations/timestamps.
+- `AudioEngineController.pitchStream` emits a raw, jittery `Double?` roughly every ~93ms (4096-sample buffer @ 44.1kHz). `HumNoteSegmenter` (`Core/Audio`) collapses that into discrete note-onset events: a candidate note must repeat for `requiredConsecutiveFrames` (default 2) before being confirmed, and only a change from the last-confirmed note (compared by `pitchClass`/`octave`, not full `DetectedNote` equality — `cents` jitters continuously) emits a `TranscriptionEvent`. Silence (`nil`) resets all state, so re-humming the same pitch after a pause correctly emits a second event.
+- `HumTranscriptionService` is the concrete `AudioTranscriptionService` (see "Phase 2 seam" below): each `transcribe()` call constructs a *fresh* `AudioEngineController` (via an injectable factory), starts it, pipes its `pitchStream` through a `HumNoteSegmenter`, and yields `TranscriptionEvent`s via `AsyncThrowingStream`; stream termination cancels the consuming task and stops the engine. A fresh controller per call matters because `AudioEngineController`'s `AsyncStream`s are single-use — once `.stop()` finishes them, reusing the same instance for a second Start/Stop/Start session would silently yield zero events forever.
+- `HumModeViewModel.isListening` reflects user intent (toggled only by explicit `start()`/`stop()`), not moment-to-moment mic hardware status — a stream error sets `errorMessage` but doesn't silently flip the Start/Stop button back, so the button's behavior is deterministic and testable independent of whether a real microphone is available (this is also why `HumModeViewModel` accepts an injected `AudioTranscriptionService`, letting `HumModeViewModelTests` use a fake stream with no AVFoundation dependency).
+
 ### Navigation
 
 `RootTabView` is a 4-tab `TabView` from day one — Tuner, Key Finder, and two "Coming Soon" placeholders for Hum Mode/Transcribe — so the tab bar shape never changes when Phase 2 ships; only inner tab content gets swapped. State via `@Observable` view models (iOS 17 idiom, no Combine).
 
-### Phase 2 seam (not implemented — do not build yet)
+### Phase 2 seam (Transcribe not implemented — do not build yet)
 
-`AudioTranscriptionService` will be a protocol only:
+`AudioTranscriptionService` is a protocol, now with one concrete conformer (`HumTranscriptionService`, for Hum Mode) and room for a second (Transcribe) later:
 
 ```swift
 protocol AudioTranscriptionService {
@@ -63,7 +73,7 @@ protocol AudioTranscriptionService {
 }
 ```
 
-The load-bearing design point: `AudioEngineController` must expose captured buffers as a generic `AsyncStream<AVAudioPCMBuffer>` any consumer can subscribe to, rather than being hard-wired to feed only the Tuner's `PitchDetecting` consumer. When building `AudioEngineController` (build order step 5), keep this seam in mind even though nothing consumes it yet.
+The load-bearing design point: `AudioEngineController` exposes captured buffers as a generic `AsyncStream<AVAudioPCMBuffer>` (`bufferStream`) any consumer can subscribe to, rather than being hard-wired to feed only the Tuner's `PitchDetecting` consumer. `HumTranscriptionService` only needed `pitchStream`; Transcribe will be the first consumer of the raw `bufferStream` seam.
 
 ## Testing
 
@@ -75,6 +85,9 @@ TDD is required: write the failing test file before its implementation file.
   - `TuningTests` — preset target frequencies.
   - `ChordTests` — exhaustive chord-symbol parse table including malformed input → nil.
   - `KeyFinderTests` — progression → expected key + confidence, including ambiguous and borrowed-chord cases.
+  - `HumNoteSegmenterTests` — synthetic frequency-frame sequences: sustained note → one event, note change → two events, single-frame blips suppressed, silence re-arms, all-nil → no events.
+  - `HumTranscriptionServiceTests` — verifies a fresh `AudioEngineController` is created per `transcribe()` call (each Start/Stop/Start session gets its own non-finished `pitchStream`, since `AsyncStream` is single-use once `.stop()` finishes it), and that an `engine.start()` failure propagates through the stream and still calls `.stop()` to release any installed tap.
+  - `HumModeViewModelTests` — uses a fake `AudioTranscriptionService` (no AVFoundation) to verify note collection, `isListening`/`errorMessage` behavior, and `clear()`.
 - Integration: extract buffer-conversion/detection-invocation logic out of the `installTap` closure so `AudioEngineController` can be exercised with synthetic buffers, no live mic needed.
 - UI tests (`GuitarBuddyUITests`) cover navigation/interaction flows only (tuning picker, chord chip add/remove, result rendering) — not DSP correctness, which belongs in unit tests.
 - AAA structure (Arrange/Act/Assert), descriptive `test_<behavior>` names.
@@ -90,7 +103,8 @@ TDD is required: write the failing test file before its implementation file.
 7. ~~Tuner UI: `TunerViewModel` → `CentsMeterView` → `StringIndicatorView` → `TuningPickerView` → `TunerView`; wire into `RootTabView`~~ — done.
 8. ~~Key Finder UI: `KeyFinderViewModel` → `ChordPickerView` → `ChordSequenceView` → `KeyResultView` → `KeyFinderView`; wire into `RootTabView`~~ — done.
 9. ~~UI tests: `TunerFlowUITests`, `KeyFinderFlowUITests`~~ — done.
-10. Manual on-device verification with a real guitar (tuner accuracy vs. a known reference) — **remaining**; cannot be automated.
+10. ~~Hum Mode, test-first: `HumNoteSegmenterTests` → `HumNoteSegmenter`, `HumTranscriptionService` → `HumModeViewModelTests` → `HumModeViewModel` → `HumNoteHistoryView`, `HumModeView`; wire into `RootTabView`; `HumModeFlowUITests`~~ — done.
+11. Manual on-device verification with a real guitar/voice (tuner accuracy vs. a known reference; Hum Mode note accuracy) — **remaining**; cannot be automated.
 
 Also added beyond the original build order: Dark Mode support (`AppearanceMode`, applied at the app root, with a per-screen toolbar picker to override system/light/dark, persisted via `@AppStorage`).
 

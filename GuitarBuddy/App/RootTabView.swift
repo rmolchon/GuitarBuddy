@@ -22,11 +22,11 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                ComingSoonView(feature: .humMode)
+                HumModeView()
                     .toolbar { appearanceToolbarItem }
             }
             .tabItem {
-                Label(UpcomingFeature.humMode.title, systemImage: UpcomingFeature.humMode.systemImage)
+                Label("Hum Mode", systemImage: "waveform")
             }
 
             NavigationStack {
