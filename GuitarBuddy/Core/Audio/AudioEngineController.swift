@@ -1,6 +1,6 @@
 import AVFoundation
 
-enum AudioEngineControllerError: LocalizedError {
+enum AudioEngineControllerError: LocalizedError, Equatable {
     case invalidInputFormat
     case permissionDenied
 
@@ -17,15 +17,21 @@ enum AudioEngineControllerError: LocalizedError {
 final class AudioEngineController {
     private let engine: AVAudioEngine
     private let pitchDetector: PitchDetecting
+    private let permissionProvider: RecordPermissionProviding
     private let bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
     private let pitchContinuation: AsyncStream<Double?>.Continuation
 
     let bufferStream: AsyncStream<AVAudioPCMBuffer>
     let pitchStream: AsyncStream<Double?>
 
-    init(engine: AVAudioEngine = AVAudioEngine(), pitchDetector: PitchDetecting = PitchDetector()) {
+    init(
+        engine: AVAudioEngine = AVAudioEngine(),
+        pitchDetector: PitchDetecting = PitchDetector(),
+        permissionProvider: RecordPermissionProviding = SystemRecordPermissionProvider()
+    ) {
         self.engine = engine
         self.pitchDetector = pitchDetector
+        self.permissionProvider = permissionProvider
 
         var bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
         bufferStream = AsyncStream { bufferContinuation = $0 }
@@ -63,13 +69,13 @@ final class AudioEngineController {
     }
 
     private func requestRecordPermissionIfNeeded() async throws {
-        switch AVAudioApplication.shared.recordPermission {
+        switch permissionProvider.recordPermission {
         case .granted:
             return
         case .denied:
             throw AudioEngineControllerError.permissionDenied
         case .undetermined:
-            let granted = await AVAudioApplication.requestRecordPermission()
+            let granted = await permissionProvider.requestRecordPermission()
             guard granted else { throw AudioEngineControllerError.permissionDenied }
         @unknown default:
             throw AudioEngineControllerError.permissionDenied

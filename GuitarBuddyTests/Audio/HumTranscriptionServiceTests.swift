@@ -22,10 +22,13 @@ final class HumTranscriptionServiceTests: XCTestCase {
     }
 
     func test_transcribePropagatesEngineStartFailureAndStopsTheController() async {
-        // Arrange: the XCTest host process has no valid audio input route, so
-        // AudioEngineController.start() reliably throws invalidInputFormat here —
-        // this deterministically exercises the failure/cleanup path with no mic needed.
-        let service = HumTranscriptionService()
+        // Arrange: with permission stubbed granted, the XCTest host process still has no
+        // valid audio input route, so AudioEngineController.start() reliably throws
+        // invalidInputFormat here — this deterministically exercises the failure/cleanup
+        // path with no mic needed.
+        let service = HumTranscriptionService(makeAudioEngineController: {
+            AudioEngineController(pitchDetector: PitchDetector(), permissionProvider: FakeRecordPermissionProvider())
+        })
 
         // Act
         let stream = service.transcribe(audioSource: .microphone)
