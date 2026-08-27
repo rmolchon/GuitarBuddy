@@ -10,7 +10,7 @@ An iOS toolbox for guitar players. Native Swift/SwiftUI, iOS 17+.
 - **Transcribe** — strum chords and see the sequence of detected chords as a scrollable chip history (polyphonic detection via the Goertzel algorithm).
 - **Dark Mode** — follows the system appearance by default, with a per-screen toolbar control to override to Light/Dark/System.
 
-All four tools are fully on-device and offline — no network calls, no third-party dependencies. The first time a mic-based tool is used, the app requests microphone permission (`AVAudioApplication.requestRecordPermission`); if denied, each tool surfaces an in-app error message with instructions to enable it in Settings.
+All four tools are fully on-device and offline — no network calls, no third-party dependencies. The first time a mic-based tool is used, the app requests microphone permission (`AVAudioApplication.requestRecordPermission`); if denied, each tool surfaces an in-app error message with instructions to enable it in Settings. Diagnostic logging uses Apple's native `os.Logger` (`Core/Logging/AppLogger`) rather than a third-party library — view logs in Console.app filtered by subsystem `com.guitarbuddy.app`.
 
 ## Requirements
 
@@ -53,6 +53,7 @@ GuitarBuddy/
   Core/
     Audio/               # Pitch detection (YIN), audio capture, chroma extraction, frequency/note math
     MusicTheory/          # Chord parsing, tunings, key-matching engine
+    Logging/              # Centralized os.Logger instances, one per feature
   Resources/            # Assets, Info.plist
 GuitarBuddyTests/       # Unit tests for Core/
 GuitarBuddyUITests/     # UI flow tests
