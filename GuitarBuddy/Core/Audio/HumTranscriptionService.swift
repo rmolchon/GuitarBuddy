@@ -16,17 +16,17 @@ final class HumTranscriptionService: AudioTranscriptionService {
         let audioEngineController = makeAudioEngineController()
 
         return AsyncThrowingStream { continuation in
-            do {
-                try audioEngineController.start()
-            } catch {
-                audioEngineController.stop()
-                continuation.finish(throwing: error)
-                return
-            }
+            let streamTask = Task {
+                do {
+                    try await audioEngineController.start()
+                } catch {
+                    audioEngineController.stop()
+                    continuation.finish(throwing: error)
+                    return
+                }
 
-            let segmenter = HumNoteSegmenter(referencePitch: referencePitch)
-            let pitchStream = audioEngineController.pitchStream
-            let consumerTask = Task {
+                let segmenter = HumNoteSegmenter(referencePitch: referencePitch)
+                let pitchStream = audioEngineController.pitchStream
                 for await frequency in pitchStream {
                     if let event = segmenter.process(frequency: frequency) {
                         continuation.yield(event)
@@ -36,7 +36,7 @@ final class HumTranscriptionService: AudioTranscriptionService {
             }
 
             continuation.onTermination = { [audioEngineController] _ in
-                consumerTask.cancel()
+                streamTask.cancel()
                 audioEngineController.stop()
             }
         }
