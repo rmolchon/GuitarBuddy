@@ -20,6 +20,7 @@ final class HumTranscriptionService: AudioTranscriptionService {
                 do {
                     try await audioEngineController.start()
                 } catch {
+                    AppLogger.humMode.error("Failed to start audio engine: \(error.localizedDescription, privacy: .public)")
                     audioEngineController.stop()
                     continuation.finish(throwing: error)
                     return
