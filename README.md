@@ -40,6 +40,36 @@ Or use the Xcode Test navigator (⌘U).
 
 For a full walkthrough of building and testing with either Xcode or VS Code — including running individual tests, reading coverage reports, and troubleshooting common setup issues — see **[BUILDING.md](BUILDING.md)**.
 
+## Troubleshooting Audio in Xcode
+
+Tuner, Hum Mode, and Transcribe all go through `AudioEngineController`, which needs a live microphone route. A few things commonly trip people up when testing audio from Xcode:
+
+### "Microphone input isn't available" in the Simulator
+
+Expected, not a bug. The iOS Simulator has no real microphone route by default — `AudioEngineController.start()` checks the input format before doing anything else and throws `AudioEngineControllerError.invalidInputFormat` when there isn't one, which is what surfaces this message in the UI.
+
+To exercise the audio features with real input:
+- **Run on a physical device** — the most reliable option. Plug in an iPhone/iPad, select it as the run destination, and trust the developer certificate if prompted.
+- **Or enable Simulator audio passthrough** — with the Simulator focused, go to **I/O → Audio Input** in the menu bar and select your Mac's microphone. Availability depends on your Xcode/macOS combination, and even when it works, latency and gain behave differently from a real device — treat it as a rough check, not a substitute for on-device verification.
+
+### Microphone permission
+
+The app requests access the first time a mic-based tool is started (`AVAudioApplication.requestRecordPermission`, backed by `NSMicrophoneUsageDescription` in `Info.plist`). If you previously denied it:
+- **In Settings** (device or Simulator): Settings → Privacy & Security → Microphone → GuitarBuddy → toggle on.
+- **From the command line**, for a specific simulator:
+  ```bash
+  xcrun simctl privacy booted grant microphone com.guitarbuddy.app
+  ```
+  If GuitarBuddy is already running, relaunch it — a permission change doesn't retroactively unstick a session that already failed.
+
+When permission is denied, the UI shows `AudioEngineControllerError.permissionDenied`'s message directly rather than failing silently.
+
+### A change to `AudioEngineController` makes a test hang or crash
+
+`start()` depends on live system permission state and the real audio session, both of which are non-deterministic in a headless XCTest run: an undetermined permission hangs the test awaiting a system prompt that never appears, and reaching `AVAudioSession`/`engine.start()` with no real input route crashes the process (`SIGKILL`) instead of throwing. Inject `FakeRecordPermissionProvider` (see `AudioEngineControllerTests`/`HumTranscriptionServiceTests`) rather than letting a test touch the real `AVAudioApplication`/`AVAudioSession` APIs, and keep any cheap guard that can fail deterministically (like the input-format check) running *before* anything that touches the live session.
+
+For broader, non-audio build/test troubleshooting, see **[BUILDING.md's Troubleshooting section](BUILDING.md#troubleshooting)**.
+
 ## Project Structure
 
 ```
