@@ -10,6 +10,7 @@ final class TunerViewModel {
 
     var selectedTuning: Tuning = .standard
     private(set) var isListening = false
+    private(set) var isStarting = false
     private(set) var errorMessage: String?
     var lastDetectedFrequency: Double?
 
@@ -40,19 +41,23 @@ final class TunerViewModel {
     }
 
     func start() {
-        guard !isListening else { return }
-        do {
-            try audioEngineController.start()
-        } catch {
-            errorMessage = error.localizedDescription
-            return
-        }
-        isListening = true
+        guard !isListening, !isStarting else { return }
+        isStarting = true
         errorMessage = nil
-        let stream = audioEngineController.pitchStream
         pitchTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.audioEngineController.start()
+            } catch {
+                self.errorMessage = error.localizedDescription
+                self.isStarting = false
+                return
+            }
+            self.isStarting = false
+            self.isListening = true
+            let stream = self.audioEngineController.pitchStream
             for await pitch in stream {
-                self?.lastDetectedFrequency = pitch
+                self.lastDetectedFrequency = pitch
             }
         }
     }
@@ -62,6 +67,7 @@ final class TunerViewModel {
         pitchTask = nil
         audioEngineController.stop()
         isListening = false
+        isStarting = false
         lastDetectedFrequency = nil
     }
 

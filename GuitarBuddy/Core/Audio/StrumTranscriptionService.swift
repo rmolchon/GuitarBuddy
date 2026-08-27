@@ -16,18 +16,18 @@ final class StrumTranscriptionService: AudioTranscriptionService {
         let audioEngineController = makeAudioEngineController()
 
         return AsyncThrowingStream { continuation in
-            do {
-                try audioEngineController.start()
-            } catch {
-                audioEngineController.stop()
-                continuation.finish(throwing: error)
-                return
-            }
+            let streamTask = Task {
+                do {
+                    try await audioEngineController.start()
+                } catch {
+                    audioEngineController.stop()
+                    continuation.finish(throwing: error)
+                    return
+                }
 
-            let segmenter = StrumSegmenter()
-            let bufferStream = audioEngineController.bufferStream
-            let referencePitch = referencePitch
-            let consumerTask = Task {
+                let segmenter = StrumSegmenter()
+                let bufferStream = audioEngineController.bufferStream
+                let referencePitch = referencePitch
                 for await buffer in bufferStream {
                     guard let samples = AudioEngineController.samples(from: buffer) else { continue }
                     let activePitchClasses = ChromaExtractor.activePitchClasses(
@@ -43,7 +43,7 @@ final class StrumTranscriptionService: AudioTranscriptionService {
             }
 
             continuation.onTermination = { [audioEngineController] _ in
-                consumerTask.cancel()
+                streamTask.cancel()
                 audioEngineController.stop()
             }
         }

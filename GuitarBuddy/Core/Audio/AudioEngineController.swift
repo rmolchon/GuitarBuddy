@@ -2,11 +2,14 @@ import AVFoundation
 
 enum AudioEngineControllerError: LocalizedError {
     case invalidInputFormat
+    case permissionDenied
 
     var errorDescription: String? {
         switch self {
         case .invalidInputFormat:
             return "Microphone input isn't available. Check that microphone access is allowed in Settings, then try again."
+        case .permissionDenied:
+            return "Microphone access is denied. Enable it for GuitarBuddy in Settings > Privacy & Security > Microphone."
         }
     }
 }
@@ -33,7 +36,13 @@ final class AudioEngineController {
         self.pitchContinuation = pitchContinuation
     }
 
-    func start() throws {
+    func start() async throws {
+        try await requestRecordPermissionIfNeeded()
+
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
+        try session.setActive(true)
+
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
@@ -48,8 +57,23 @@ final class AudioEngineController {
     func stop() {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         bufferContinuation.finish()
         pitchContinuation.finish()
+    }
+
+    private func requestRecordPermissionIfNeeded() async throws {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted:
+            return
+        case .denied:
+            throw AudioEngineControllerError.permissionDenied
+        case .undetermined:
+            let granted = await AVAudioApplication.requestRecordPermission()
+            guard granted else { throw AudioEngineControllerError.permissionDenied }
+        @unknown default:
+            throw AudioEngineControllerError.permissionDenied
+        }
     }
 
     func handle(_ buffer: AVAudioPCMBuffer) {
