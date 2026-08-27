@@ -65,6 +65,34 @@ final class AudioEngineControllerTests: XCTestCase {
         XCTAssertEqual(received?.frameLength, buffer.frameLength)
     }
 
+    func test_startThrowsPermissionDeniedWhenPermissionIsDenied() async {
+        let controller = AudioEngineController(
+            pitchDetector: PitchDetector(),
+            permissionProvider: FakeRecordPermissionProvider(recordPermission: .denied)
+        )
+
+        do {
+            try await controller.start()
+            XCTFail("expected start() to throw")
+        } catch {
+            XCTAssertEqual(error as? AudioEngineControllerError, .permissionDenied)
+        }
+    }
+
+    func test_startThrowsPermissionDeniedWhenUndeterminedRequestIsDeclined() async {
+        let controller = AudioEngineController(
+            pitchDetector: PitchDetector(),
+            permissionProvider: FakeRecordPermissionProvider(recordPermission: .undetermined, requestRecordPermissionResult: false)
+        )
+
+        do {
+            try await controller.start()
+            XCTFail("expected start() to throw")
+        } catch {
+            XCTAssertEqual(error as? AudioEngineControllerError, .permissionDenied)
+        }
+    }
+
     private func makeBuffer(samples: [Float], sampleRate: Double) -> AVAudioPCMBuffer {
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(max(samples.count, 1)))!

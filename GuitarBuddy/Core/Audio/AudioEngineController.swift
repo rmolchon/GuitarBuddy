@@ -1,6 +1,6 @@
 import AVFoundation
 
-enum AudioEngineControllerError: LocalizedError {
+enum AudioEngineControllerError: LocalizedError, Equatable {
     case invalidInputFormat
     case permissionDenied
 
@@ -17,15 +17,21 @@ enum AudioEngineControllerError: LocalizedError {
 final class AudioEngineController {
     private let engine: AVAudioEngine
     private let pitchDetector: PitchDetecting
+    private let permissionProvider: RecordPermissionProviding
     private let bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
     private let pitchContinuation: AsyncStream<Double?>.Continuation
 
     let bufferStream: AsyncStream<AVAudioPCMBuffer>
     let pitchStream: AsyncStream<Double?>
 
-    init(engine: AVAudioEngine = AVAudioEngine(), pitchDetector: PitchDetecting = PitchDetector()) {
+    init(
+        engine: AVAudioEngine = AVAudioEngine(),
+        pitchDetector: PitchDetecting = PitchDetector(),
+        permissionProvider: RecordPermissionProviding = SystemRecordPermissionProvider()
+    ) {
         self.engine = engine
         self.pitchDetector = pitchDetector
+        self.permissionProvider = permissionProvider
 
         var bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
         bufferStream = AsyncStream { bufferContinuation = $0 }
@@ -39,16 +45,17 @@ final class AudioEngineController {
     func start() async throws {
         try await requestRecordPermissionIfNeeded()
 
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
-        try session.setActive(true)
-
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
             AppLogger.audio.error("Invalid input format: sampleRate=\(format.sampleRate), channelCount=\(format.channelCount)")
             throw AudioEngineControllerError.invalidInputFormat
         }
+
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
+        try session.setActive(true)
+
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
             self?.handle(buffer)
         }
@@ -71,14 +78,14 @@ final class AudioEngineController {
     }
 
     private func requestRecordPermissionIfNeeded() async throws {
-        switch AVAudioApplication.shared.recordPermission {
+        switch permissionProvider.recordPermission {
         case .granted:
             return
         case .denied:
             AppLogger.audio.warning("Microphone permission denied")
             throw AudioEngineControllerError.permissionDenied
         case .undetermined:
-            let granted = await AVAudioApplication.requestRecordPermission()
+            let granted = await permissionProvider.requestRecordPermission()
             guard granted else {
                 AppLogger.audio.warning("Microphone permission request declined")
                 throw AudioEngineControllerError.permissionDenied

@@ -25,14 +25,16 @@ GuitarBuddy/
     HumMode/                # HumModeView, HumModeViewModel, HumNoteHistoryView
     Transcribe/             # TranscribeView, TranscribeViewModel, ChordHistoryView
   Core/
-    Audio/                 # PitchDetectorProtocol, PitchDetector (YIN), AudioEngineController,
+    Audio/                 # PitchDetectorProtocol, PitchDetector (YIN), AudioEngineController, RecordPermissionProviding,
                             # AudioTranscriptionService (protocol) + HumTranscriptionService/StrumTranscriptionService (concrete),
                             # FrameDebouncer, HumNoteSegmenter, StrumSegmenter, ChromaExtractor, FrequencyToNote
+    Logging/                # AppLogger (os.Logger instances namespaced per feature)
     MusicTheory/            # Note, Chord, ChordQuality, ChordRecognizer, Tuning, Key, KeySignatureTable, KeyFinder
   Resources/                # Assets.xcassets, Info.plist
 GuitarBuddyTests/
   Audio/                    # PitchDetectorTests, FrequencyToNoteTests, FrameDebouncerTests, HumNoteSegmenterTests,
-                            # ChromaExtractorTests, StrumSegmenterTests, HumTranscriptionServiceTests, StrumTranscriptionServiceTests
+                            # ChromaExtractorTests, StrumSegmenterTests, HumTranscriptionServiceTests, StrumTranscriptionServiceTests,
+                            # AudioEngineControllerTests, FakeRecordPermissionProvider
   HumMode/                  # HumModeViewModelTests
   Transcribe/               # TranscribeViewModelTests
   MusicTheory/               # ChordTests, ChordRecognizerTests, KeyFinderTests, TuningTests
@@ -46,6 +48,7 @@ GuitarBuddyUITests/
 ### Tuner
 
 - Capture via `AVAudioEngine.inputNode.installTap`, background-queue processing.
+- `AudioEngineController.start()` is `async` — it awaits mic permission, checks the input format is available, *then* configures the `AVAudioSession` (`.playAndRecord`/`.measurement`) and starts the engine, throwing `AudioEngineControllerError.permissionDenied`/`.invalidInputFormat` as appropriate. The format check deliberately runs before touching `AVAudioSession`/`engine.start()` — reaching those with no real input route (as in the XCTest host) crashes the process (`SIGKILL`) rather than throwing a catchable error, so the cheap format guard must short-circuit first. Permission state is read through the injectable `RecordPermissionProviding` protocol (`SystemRecordPermissionProvider` in production) rather than calling `AVAudioApplication` directly, since querying/requesting *live* system permission state is non-deterministic in a headless XCTest host — an undetermined permission hangs awaiting a system prompt that never appears. Tests inject `FakeRecordPermissionProvider` instead.
 - Pitch detection is **YIN** (autocorrelation-based with cumulative-mean-normalized difference + absolute threshold), not naive FFT peak-picking — wound low strings (E/A) often have a weak fundamental relative to harmonics, which fools FFT peak detection into locking onto the 2nd harmonic. YIN is implemented behind a `PitchDetecting` protocol so it's swappable and testable with synthetic sine waves.
 - `PitchDetector` only returns Hz — it has no concept of tunings. `Tuning` is a struct (not a closed enum) holding an ordered list of target frequencies per string, so adding tuning presets never touches detection code.
 - Note/cents mapping: semitones-from-A4 via `12 * log2(f / A4Hz)`; cents offset = `100 * (n - round(n))`. Reference pitch defaults to A440, adjustable via `@AppStorage`.
@@ -106,7 +109,8 @@ TDD is required: write the failing test file before its implementation file.
   - `ChordRecognizerTests` — exhaustive pitch-class-set → chord table (major/minor/7ths/dim/aug/sus2/sus4), largest-template preference, tolerance of extra notes, `nil` for empty/single-note/non-chord clusters.
   - `ChromaExtractorTests` — synthetic multi-sine-wave "chord" buffers (e.g. summed C4+E4+G4) → expected active pitch classes; silence → empty set.
   - `StrumSegmenterTests` — same shape as `HumNoteSegmenterTests` but for `Set<PitchClass>` → chord events, including an unrecognizable cluster being treated like silence.
-  - `HumTranscriptionServiceTests` / `StrumTranscriptionServiceTests` — verify a fresh `AudioEngineController` is created per `transcribe()` call (each Start/Stop/Start session gets its own non-finished stream, since `AsyncStream` is single-use once `.stop()` finishes it), and that an `engine.start()` failure propagates through the stream and still calls `.stop()` to release any installed tap.
+  - `HumTranscriptionServiceTests` / `StrumTranscriptionServiceTests` — verify a fresh `AudioEngineController` is created per `transcribe()` call (each Start/Stop/Start session gets its own non-finished stream, since `AsyncStream` is single-use once `.stop()` finishes it), and that an `engine.start()` failure propagates through the stream and still calls `.stop()` to release any installed tap. Inject `FakeRecordPermissionProvider` (granted) so the failure deterministically exercises the `invalidInputFormat` path rather than depending on live system permission state.
+  - `AudioEngineControllerTests` — also covers the `RecordPermissionProviding` branches directly: `permissionDenied` when already denied, and when an undetermined request is declined.
   - `HumModeViewModelTests` / `TranscribeViewModelTests` — use a fake `AudioTranscriptionService` (no AVFoundation) to verify event collection, `isListening`/`errorMessage` behavior, and `clear()`.
 - Integration: extract buffer-conversion/detection-invocation logic out of the `installTap` closure so `AudioEngineController` can be exercised with synthetic buffers, no live mic needed.
 - UI tests (`GuitarBuddyUITests`) cover navigation/interaction flows only (tuning picker, chord chip add/remove, result rendering) — not DSP correctness, which belongs in unit tests.
