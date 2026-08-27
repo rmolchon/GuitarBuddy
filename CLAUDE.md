@@ -20,7 +20,7 @@ Organized by feature, not by type:
 GuitarBuddy/
   App/                     # Entry point, root tab navigation, placeholder views
   Features/
-    Tuner/                 # TunerView, TunerViewModel, TuningPickerView, StringIndicatorView, CentsMeterView
+    Tuner/                 # TunerView, TunerViewModel, TuningPickerView, StringIndicatorView, TunerGaugeView
     KeyFinder/              # KeyFinderView, KeyFinderViewModel, ChordPickerView, ChordSequenceView, KeyResultView
     HumMode/                # HumModeView, HumModeViewModel, HumNoteHistoryView
     Transcribe/             # TranscribeView, TranscribeViewModel, ChordHistoryView
@@ -52,6 +52,7 @@ GuitarBuddyUITests/
 - Pitch detection is **YIN** (autocorrelation-based with cumulative-mean-normalized difference + absolute threshold), not naive FFT peak-picking — wound low strings (E/A) often have a weak fundamental relative to harmonics, which fools FFT peak detection into locking onto the 2nd harmonic. YIN is implemented behind a `PitchDetecting` protocol so it's swappable and testable with synthetic sine waves.
 - `PitchDetector` only returns Hz — it has no concept of tunings. `Tuning` is a struct (not a closed enum) holding an ordered list of target frequencies per string, so adding tuning presets never touches detection code.
 - Note/cents mapping: semitones-from-A4 via `12 * log2(f / A4Hz)`; cents offset = `100 * (n - round(n))`. Reference pitch defaults to A440, adjustable via `@AppStorage`.
+- `TunerGaugeView` renders an analog-style needle gauge (arc + colored in-tune band + needle) rather than a linear meter, styled after a reference mockup (`Misc/GuitarTuner.png`, not part of the app target). It draws entirely with SwiftUI `Path`/`addArc` — no image assets — using a custom angle convention (0° = straight up, positive = clockwise toward the sharper/next-semitone side) converted to `Path.addArc`'s 3-o'clock-origin convention via `gaugeAngle(_:)`. The flanking labels are the detected note's chromatic neighbors (`FrequencyToNote.neighborNote(pitchClass:octave:semitones:)`, which handles octave wraparound at the B/C boundary), not the selected tuning's target strings. `TunerGaugeView.tuningColor(forCents:)` is `static` so `TunerView`'s big readout label below the gauge can share the same green/orange/red thresholds as the needle instead of duplicating them.
 
 ### Key Finder
 

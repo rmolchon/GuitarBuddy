@@ -28,4 +28,13 @@ enum FrequencyToNote {
         let semitonesFromA4 = Double(midiNumber - a4MidiNumber)
         return referencePitch * pow(2, semitonesFromA4 / 12)
     }
+
+    /// The pitch class/octave `semitones` away from the given note, wrapping the octave
+    /// correctly at the C/B boundary (e.g. B4 + 1 semitone → C5).
+    static func neighborNote(pitchClass: PitchClass, octave: Int, semitones: Int) -> (pitchClass: PitchClass, octave: Int) {
+        let midiNumber = (octave + 1) * 12 + pitchClass.rawValue + semitones
+        let neighborPitchClassIndex = ((midiNumber % 12) + 12) % 12
+        let neighborOctave = midiNumber / 12 - 1
+        return (PitchClass(rawValue: neighborPitchClassIndex)!, neighborOctave)
+    }
 }

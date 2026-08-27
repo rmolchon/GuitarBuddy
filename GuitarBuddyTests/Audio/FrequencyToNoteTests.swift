@@ -78,4 +78,28 @@ final class FrequencyToNoteTests: XCTestCase {
         XCTAssertEqual(note?.octave, 3)
         XCTAssertEqual(note?.cents ?? .nan, 0, accuracy: 0.01)
     }
+
+    func test_neighborNoteOneSemitoneUpWithinSameOctave() {
+        let neighbor = FrequencyToNote.neighborNote(pitchClass: .a, octave: 2, semitones: 1)
+        XCTAssertEqual(neighbor.pitchClass, .aSharp)
+        XCTAssertEqual(neighbor.octave, 2)
+    }
+
+    func test_neighborNoteOneSemitoneDownWithinSameOctave() {
+        let neighbor = FrequencyToNote.neighborNote(pitchClass: .a, octave: 2, semitones: -1)
+        XCTAssertEqual(neighbor.pitchClass, .gSharp)
+        XCTAssertEqual(neighbor.octave, 2)
+    }
+
+    func test_neighborNoteWrapsOctaveUpAtB() {
+        let neighbor = FrequencyToNote.neighborNote(pitchClass: .b, octave: 4, semitones: 1)
+        XCTAssertEqual(neighbor.pitchClass, .c)
+        XCTAssertEqual(neighbor.octave, 5)
+    }
+
+    func test_neighborNoteWrapsOctaveDownAtC() {
+        let neighbor = FrequencyToNote.neighborNote(pitchClass: .c, octave: 4, semitones: -1)
+        XCTAssertEqual(neighbor.pitchClass, .b)
+        XCTAssertEqual(neighbor.octave, 3)
+    }
 }

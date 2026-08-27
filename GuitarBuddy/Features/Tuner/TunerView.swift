@@ -10,12 +10,18 @@ struct TunerView: View {
             StringIndicatorView(tuning: viewModel.selectedTuning, closestStringIndex: viewModel.closestStringIndex)
 
             VStack(spacing: 8) {
+                TunerGaugeView(
+                    noteLabel: detectedNoteLabel,
+                    previousNeighborLabel: neighborLabel(semitones: -1),
+                    nextNeighborLabel: neighborLabel(semitones: 1),
+                    cents: viewModel.centsOffsetFromClosestString
+                )
+                .padding(.horizontal, 16)
+
                 Text(detectedNoteLabel)
                     .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundStyle(TunerGaugeView.tuningColor(forCents: viewModel.centsOffsetFromClosestString))
                     .contentTransition(.numericText())
-
-                CentsMeterView(cents: viewModel.centsOffsetFromClosestString)
-                    .padding(.horizontal, 32)
             }
 
             if let errorMessage = viewModel.errorMessage {
@@ -35,6 +41,12 @@ struct TunerView: View {
     private var detectedNoteLabel: String {
         guard let note = viewModel.detectedNote else { return "—" }
         return "\(note.pitchClass.displayName)\(note.octave)"
+    }
+
+    private func neighborLabel(semitones: Int) -> String {
+        guard let note = viewModel.detectedNote else { return "" }
+        let neighbor = FrequencyToNote.neighborNote(pitchClass: note.pitchClass, octave: note.octave, semitones: semitones)
+        return "\(neighbor.pitchClass.displayName)\(neighbor.octave)"
     }
 }
 
