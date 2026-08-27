@@ -49,6 +49,7 @@ final class TunerViewModel {
             do {
                 try await self.audioEngineController.start()
             } catch {
+                AppLogger.tuner.error("Failed to start audio engine: \(error.localizedDescription, privacy: .public)")
                 self.errorMessage = error.localizedDescription
                 self.isStarting = false
                 return

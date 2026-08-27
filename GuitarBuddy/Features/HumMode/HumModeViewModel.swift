@@ -27,6 +27,7 @@ final class HumModeViewModel {
                     }
                 }
             } catch {
+                AppLogger.humMode.error("Transcription stream failed: \(error.localizedDescription, privacy: .public)")
                 self?.errorMessage = error.localizedDescription
             }
         }

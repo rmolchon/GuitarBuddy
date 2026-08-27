@@ -15,6 +15,7 @@ final class KeyFinderViewModel {
         let trimmed = chordInput.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         guard let chord = Chord.parse(trimmed) else {
+            AppLogger.keyFinder.debug("Unrecognized chord symbol: \(trimmed, privacy: .public)")
             invalidInputMessage = "\"\(trimmed)\" isn't a recognized chord symbol."
             return
         }

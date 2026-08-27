@@ -20,6 +20,7 @@ final class StrumTranscriptionService: AudioTranscriptionService {
                 do {
                     try await audioEngineController.start()
                 } catch {
+                    AppLogger.transcribe.error("Failed to start audio engine: \(error.localizedDescription, privacy: .public)")
                     audioEngineController.stop()
                     continuation.finish(throwing: error)
                     return

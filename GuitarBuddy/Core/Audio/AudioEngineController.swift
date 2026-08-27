@@ -48,6 +48,7 @@ final class AudioEngineController {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
+            AppLogger.audio.error("Invalid input format: sampleRate=\(format.sampleRate), channelCount=\(format.channelCount)")
             throw AudioEngineControllerError.invalidInputFormat
         }
 
@@ -58,7 +59,13 @@ final class AudioEngineController {
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
             self?.handle(buffer)
         }
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            AppLogger.audio.error("AVAudioEngine failed to start: \(error.localizedDescription, privacy: .public)")
+            throw error
+        }
+        AppLogger.audio.debug("Audio engine started")
     }
 
     func stop() {
@@ -67,6 +74,7 @@ final class AudioEngineController {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         bufferContinuation.finish()
         pitchContinuation.finish()
+        AppLogger.audio.debug("Audio engine stopped")
     }
 
     private func requestRecordPermissionIfNeeded() async throws {
@@ -74,11 +82,16 @@ final class AudioEngineController {
         case .granted:
             return
         case .denied:
+            AppLogger.audio.warning("Microphone permission denied")
             throw AudioEngineControllerError.permissionDenied
         case .undetermined:
             let granted = await permissionProvider.requestRecordPermission()
-            guard granted else { throw AudioEngineControllerError.permissionDenied }
+            guard granted else {
+                AppLogger.audio.warning("Microphone permission request declined")
+                throw AudioEngineControllerError.permissionDenied
+            }
         @unknown default:
+            AppLogger.audio.warning("Microphone permission in unknown state")
             throw AudioEngineControllerError.permissionDenied
         }
     }
