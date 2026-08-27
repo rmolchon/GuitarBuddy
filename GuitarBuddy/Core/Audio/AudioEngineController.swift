@@ -45,15 +45,16 @@ final class AudioEngineController {
     func start() async throws {
         try await requestRecordPermissionIfNeeded()
 
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
-        try session.setActive(true)
-
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
             throw AudioEngineControllerError.invalidInputFormat
         }
+
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
+        try session.setActive(true)
+
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
             self?.handle(buffer)
         }
