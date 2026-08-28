@@ -1,45 +1,10 @@
-import Foundation
-import Observation
-
-@Observable
-final class TranscribeViewModel {
-    private let transcriptionService: AudioTranscriptionService
-    private var transcriptionTask: Task<Void, Never>?
-
-    private(set) var isListening = false
-    private(set) var errorMessage: String?
-    private(set) var chords: [Chord] = []
+final class TranscribeViewModel: TranscriptionCollectorViewModel<Chord> {
+    var chords: [Chord] { items }
 
     init(transcriptionService: AudioTranscriptionService = StrumTranscriptionService()) {
-        self.transcriptionService = transcriptionService
-    }
-
-    func start() {
-        guard !isListening else { return }
-        isListening = true
-        errorMessage = nil
-        let stream = transcriptionService.transcribe(audioSource: .microphone)
-        transcriptionTask = Task { [weak self] in
-            do {
-                for try await event in stream {
-                    if case .chord(let chord) = event {
-                        self?.chords.append(chord)
-                    }
-                }
-            } catch {
-                AppLogger.transcribe.error("Transcription stream failed: \(error.localizedDescription, privacy: .public)")
-                self?.errorMessage = error.localizedDescription
-            }
+        super.init(transcriptionService: transcriptionService, logger: AppLogger.transcribe) { event in
+            guard case .chord(let chord) = event else { return nil }
+            return chord
         }
-    }
-
-    func stop() {
-        transcriptionTask?.cancel()
-        transcriptionTask = nil
-        isListening = false
-    }
-
-    func clear() {
-        chords.removeAll()
     }
 }
