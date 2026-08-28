@@ -80,6 +80,7 @@ final class AudioEngineController {
     private func requestRecordPermissionIfNeeded() async throws {
         switch permissionProvider.recordPermission {
         case .granted:
+            AppLogger.audio.debug("Microphone permission granted")
             return
         case .denied:
             AppLogger.audio.warning("Microphone permission denied")
