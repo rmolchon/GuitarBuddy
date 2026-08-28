@@ -15,7 +15,7 @@ enum ChromaExtractor {
         referencePitch: Double = 440.0,
         energyThresholdRatio: Double = 0.3
     ) -> Set<PitchClass> {
-        guard hasSufficientEnergy(samples) else { return [] }
+        guard SignalEnergy.hasSufficientEnergy(samples, minimumRMS: minimumRMS) else { return [] }
 
         var chromaEnergy = [Double](repeating: 0, count: PitchClass.allCases.count)
         for octave in octaveRange {
@@ -34,13 +34,6 @@ enum ChromaExtractor {
                 .filter { $0.element >= threshold }
                 .compactMap { PitchClass(rawValue: $0.offset) }
         )
-    }
-
-    private static func hasSufficientEnergy(_ samples: [Float]) -> Bool {
-        guard !samples.isEmpty else { return false }
-        let sumOfSquares = samples.reduce(Float(0)) { $0 + $1 * $1 }
-        let rms = sqrt(sumOfSquares / Float(samples.count))
-        return rms >= minimumRMS
     }
 
     private static func goertzelEnergy(samples: [Float], targetFrequency: Double, sampleRate: Double) -> Double {

@@ -19,7 +19,7 @@ struct PitchDetector: PitchDetecting {
     }
 
     func detectPitch(from samples: [Float], sampleRate: Double) -> Double? {
-        guard hasSufficientEnergy(samples) else { return nil }
+        guard SignalEnergy.hasSufficientEnergy(samples, minimumRMS: minimumRMS) else { return nil }
 
         let tauMin = max(1, Int(sampleRate / maxFrequency))
         let tauMax = min(samples.count / 2, Int(sampleRate / minFrequency))
@@ -32,13 +32,6 @@ struct PitchDetector: PitchDetecting {
 
         let refinedTau = parabolicInterpolation(cmndf: cmndf, tau: tau)
         return sampleRate / refinedTau
-    }
-
-    private func hasSufficientEnergy(_ samples: [Float]) -> Bool {
-        guard !samples.isEmpty else { return false }
-        let sumOfSquares = samples.reduce(Float(0)) { $0 + $1 * $1 }
-        let rms = sqrt(sumOfSquares / Float(samples.count))
-        return rms >= minimumRMS
     }
 
     private func cumulativeMeanNormalizedDifference(samples: [Float], tauMax: Int) -> [Double] {
