@@ -5,7 +5,8 @@ import Observation
 final class TunerViewModel {
     private static let referencePitchKey = "referencePitch"
 
-    private let audioEngineController: AudioEngineController
+    private let makeAudioEngineController: () -> AudioEngineController
+    private var audioEngineController: AudioEngineController?
     private var pitchTask: Task<Void, Never>?
 
     var selectedTuning: Tuning = .standard
@@ -36,18 +37,20 @@ final class TunerViewModel {
         return 1200 * log2(frequency / scaledTargetFrequency(at: index))
     }
 
-    init(audioEngineController: AudioEngineController = AudioEngineController()) {
-        self.audioEngineController = audioEngineController
+    init(makeAudioEngineController: @escaping () -> AudioEngineController = { AudioEngineController() }) {
+        self.makeAudioEngineController = makeAudioEngineController
     }
 
     func start() {
         guard !isListening, !isStarting else { return }
         isStarting = true
         errorMessage = nil
+        let audioEngineController = makeAudioEngineController()
+        self.audioEngineController = audioEngineController
         pitchTask = Task { [weak self] in
             guard let self else { return }
             do {
-                try await self.audioEngineController.start()
+                try await audioEngineController.start()
             } catch {
                 AppLogger.tuner.error("Failed to start audio engine: \(error.localizedDescription, privacy: .public)")
                 self.errorMessage = error.localizedDescription
@@ -56,7 +59,7 @@ final class TunerViewModel {
             }
             self.isStarting = false
             self.isListening = true
-            let stream = self.audioEngineController.pitchStream
+            let stream = audioEngineController.pitchStream
             for await pitch in stream {
                 self.lastDetectedFrequency = pitch
             }
@@ -66,7 +69,8 @@ final class TunerViewModel {
     func stop() {
         pitchTask?.cancel()
         pitchTask = nil
-        audioEngineController.stop()
+        audioEngineController?.stop()
+        audioEngineController = nil
         isListening = false
         isStarting = false
         lastDetectedFrequency = nil
