@@ -10,15 +10,14 @@ final class KeyFinderFlowUITests: XCTestCase {
         // Arrange
         let app = XCUIApplication()
         openKeyFinder(app)
-        let input = app.textFields["chordInputField"]
         let addButton = app.buttons["addChordButton"]
         // Act
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
-        input.tap()
-        input.typeText("C")
+        XCTAssertTrue(app.buttons["chordRootButton_C"].waitForExistence(timeout: 5))
+        app.buttons["chordRootButton_C"].tap()
         addButton.tap()
-        input.tap()
-        input.typeText("Am")
+
+        app.buttons["chordRootButton_A"].tap()
+        app.buttons["chordQualityButton_minor"].tap()
         addButton.tap()
         // Assert
         XCTAssertTrue(app.staticTexts["chordChip_C"].waitForExistence(timeout: 5))
@@ -30,11 +29,10 @@ final class KeyFinderFlowUITests: XCTestCase {
     func test_removingAChordChipUpdatesTheSequence() {
         let app = XCUIApplication()
         openKeyFinder(app)
-        let input = app.textFields["chordInputField"]
         let addButton = app.buttons["addChordButton"]
 
-        input.tap()
-        input.typeText("G")
+        XCTAssertTrue(app.buttons["chordRootButton_G"].waitForExistence(timeout: 5))
+        app.buttons["chordRootButton_G"].tap()
         addButton.tap()
         XCTAssertTrue(app.staticTexts["chordChip_G"].waitForExistence(timeout: 5))
 
@@ -42,17 +40,27 @@ final class KeyFinderFlowUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["chordChip_G"].waitForExistence(timeout: 2))
     }
 
-    func test_invalidChordSymbolShowsAnErrorAndDoesNotAddAChip() {
+    func test_selectingAQualityAddsTheCorrespondingChordType() {
         let app = XCUIApplication()
         openKeyFinder(app)
-        let input = app.textFields["chordInputField"]
         let addButton = app.buttons["addChordButton"]
 
-        input.tap()
-        input.typeText("Zxyz")
+        XCTAssertTrue(app.buttons["chordRootButton_G"].waitForExistence(timeout: 5))
+        app.buttons["chordRootButton_G"].tap()
+        app.buttons["chordQualityButton_dominant7"].tap()
         addButton.tap()
 
-        XCTAssertTrue(app.staticTexts["invalidChordMessage"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["chordChip_Zxyz"].exists)
+        XCTAssertTrue(app.staticTexts["chordChip_G7"].waitForExistence(timeout: 5))
+    }
+
+    func test_addButtonIsDisabledUntilARootIsSelected() {
+        let app = XCUIApplication()
+        openKeyFinder(app)
+
+        XCTAssertTrue(app.buttons["addChordButton"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["addChordButton"].isEnabled)
+
+        app.buttons["chordRootButton_D"].tap()
+        XCTAssertTrue(app.buttons["addChordButton"].isEnabled)
     }
 }

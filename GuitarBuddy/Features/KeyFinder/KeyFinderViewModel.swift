@@ -3,25 +3,19 @@ import Observation
 
 @Observable
 final class KeyFinderViewModel {
-    var chordInput: String = ""
+    var selectedRoot: PitchClass?
+    var selectedQuality: ChordQuality = .major
     private(set) var chords: [Chord] = []
-    private(set) var invalidInputMessage: String?
 
     var result: KeyMatchResult {
         KeyFinder.findKey(for: chords)
     }
 
     func addChord() {
-        let trimmed = chordInput.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        guard let chord = Chord.parse(trimmed) else {
-            AppLogger.keyFinder.debug("Unrecognized chord symbol: \(trimmed, privacy: .public)")
-            invalidInputMessage = "\"\(trimmed)\" isn't a recognized chord symbol."
-            return
-        }
-        chords.append(chord)
-        chordInput = ""
-        invalidInputMessage = nil
+        guard let selectedRoot else { return }
+        chords.append(Chord(root: selectedRoot, quality: selectedQuality))
+        self.selectedRoot = nil
+        selectedQuality = .major
     }
 
     func removeChord(at index: Int) {
@@ -31,7 +25,7 @@ final class KeyFinderViewModel {
 
     func clear() {
         chords.removeAll()
-        chordInput = ""
-        invalidInputMessage = nil
+        selectedRoot = nil
+        selectedQuality = .major
     }
 }

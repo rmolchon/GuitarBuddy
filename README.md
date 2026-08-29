@@ -5,7 +5,7 @@ An iOS toolbox for guitar players. Native Swift/SwiftUI, iOS 17+.
 ## Features
 
 - **Tuner** — real-time pitch detection (YIN algorithm) with standard tuning plus common alt tunings: Drop D, Open G, Open D, DADGAD, Half-Step Down.
-- **Key Finder** — enter a chord sequence (e.g. `C, Am, F, G`) and get a best-guess musical key with a confidence score, using diatonic chord matching.
+- **Key Finder** — build a chord sequence by tapping a root note and quality onscreen (e.g. `C`, `Am`, `F`, `G`) and get a best-guess musical key with a confidence score, using diatonic chord matching.
 - **Hum Mode** — hum a melody and see the sequence of detected notes as a scrollable chip history.
 - **Transcribe** — strum chords and see the sequence of detected chords as a scrollable chip history (polyphonic detection via the Goertzel algorithm).
 - **Dark Mode** — follows the system appearance by default, with a per-screen toolbar control to override to Light/Dark/System.

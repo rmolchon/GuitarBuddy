@@ -1,36 +1,37 @@
 import SwiftUI
 
 struct ChordPickerView: View {
-    @Binding var chordInput: String
-    let invalidInputMessage: String?
+    @Binding var selectedRoot: PitchClass?
+    @Binding var selectedQuality: ChordQuality
     let onAdd: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 12) {
+            RootPickerView(selectedRoot: $selectedRoot)
+            QualityPickerView(selectedQuality: $selectedQuality)
+
             HStack {
-                TextField("Chord (e.g. C, Am, G7)", text: $chordInput)
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-                    .onSubmit(onAdd)
-                    .accessibilityIdentifier("chordInputField")
+                if let selectedRoot {
+                    Text(Chord(root: selectedRoot, quality: selectedQuality).displayName)
+                        .font(.headline)
+                        .accessibilityIdentifier("chordPreviewLabel")
+                } else {
+                    Text("Select a root note")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
 
                 Button("Add", action: onAdd)
-                    .disabled(chordInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(selectedRoot == nil)
                     .accessibilityIdentifier("addChordButton")
-            }
-
-            if let invalidInputMessage {
-                Text(invalidInputMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .accessibilityIdentifier("invalidChordMessage")
             }
         }
     }
 }
 
 #Preview {
-    ChordPickerView(chordInput: .constant("Am"), invalidInputMessage: nil, onAdd: {})
+    ChordPickerView(selectedRoot: .constant(.a), selectedQuality: .constant(.minor), onAdd: {})
         .padding()
 }
