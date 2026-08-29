@@ -21,7 +21,7 @@ GuitarBuddy/
   App/                     # Entry point, root tab navigation, placeholder views
   Features/
     Tuner/                 # TunerView, TunerViewModel, TuningPickerView, StringIndicatorView, TunerGaugeView
-    KeyFinder/              # KeyFinderView, KeyFinderViewModel, ChordPickerView, ChordSequenceView, KeyResultView
+    KeyFinder/              # KeyFinderView, KeyFinderViewModel, ChordPickerView, RootPickerView, QualityPickerView, ChordSequenceView, KeyResultView
     HumMode/                # HumModeView, HumModeViewModel, HumNoteHistoryView
     Transcribe/             # TranscribeView, TranscribeViewModel, ChordHistoryView
   Core/
@@ -36,6 +36,7 @@ GuitarBuddyTests/
                             # ChromaExtractorTests, StrumSegmenterTests, HumTranscriptionServiceTests, StrumTranscriptionServiceTests,
                             # AudioEngineControllerTests, FakeRecordPermissionProvider
   HumMode/                  # HumModeViewModelTests
+  KeyFinder/                # KeyFinderViewModelTests
   Transcribe/               # TranscribeViewModelTests
   MusicTheory/               # ChordTests, ChordRecognizerTests, KeyFinderTests, TuningTests
 GuitarBuddyUITests/
@@ -56,7 +57,8 @@ GuitarBuddyUITests/
 
 ### Key Finder
 
-- `Chord.parse(_ symbol: String) -> Chord?` normalizes chord-symbol strings (`C`, `Dm`, `F#`, `Bb`, `G7`, `Am7`, `Fmaj7`, `Bdim`, `Caug`, `Dsus2/4`, unicode `♯`/`♭`, case-insensitive) into `root: PitchClass` + `quality: ChordQuality`.
+- Chords are built by onscreen selection, not typed text: `RootPickerView` (a 12-button grid of `PitchClass.allCases`) and `QualityPickerView` (a scrollable row of `ChordQuality.allCases`) each bind to a `KeyFinderViewModel` selection property; `ChordPickerView` composes both plus a live chord-name preview and the `Add` button. Because the chord is assembled directly from two closed enums, there's no free-text parsing and therefore no invalid-input state to handle in this flow.
+- `Chord.parse(_ symbol: String) -> Chord?` still lives on `Chord` and normalizes chord-symbol strings (`C`, `Dm`, `F#`, `Bb`, `G7`, `Am7`, `Fmaj7`, `Bdim`, `Caug`, `Dsus2/4`, unicode `♯`/`♭`, case-insensitive) into `root: PitchClass` + `quality: ChordQuality` — it's exhaustively covered by `ChordTests` as a pure `Core` utility, but the Key Finder UI no longer calls it now that chord entry is picker-based.
 - `KeyFinder.findKey(for: [Chord]) -> KeyMatchResult` is a pure, dependency-free function: precompute diatonic scale-degree chord slots (I, ii, iii, IV, V, vi, vii°) for each of the 12 major keys, match loosely by quality-family (major/minor/diminished) so `G`/`G7`/`Gmaj7` all satisfy the V slot, score by fraction of diatonic input chords, and break ties by (1) tonic/relative-minor presence, then (2) V/V7 presence.
 
 ### Hum Mode
@@ -113,6 +115,7 @@ TDD is required: write the failing test file before its implementation file.
   - `HumTranscriptionServiceTests` / `StrumTranscriptionServiceTests` — verify a fresh `AudioEngineController` is created per `transcribe()` call (each Start/Stop/Start session gets its own non-finished stream, since `AsyncStream` is single-use once `.stop()` finishes it), and that an `engine.start()` failure propagates through the stream and still calls `.stop()` to release any installed tap. Inject `FakeRecordPermissionProvider` (granted) so the failure deterministically exercises the `invalidInputFormat` path rather than depending on live system permission state.
   - `AudioEngineControllerTests` — also covers the `RecordPermissionProviding` branches directly: `permissionDenied` when already denied, and when an undetermined request is declined.
   - `HumModeViewModelTests` / `TranscribeViewModelTests` — use a fake `AudioTranscriptionService` (no AVFoundation) to verify event collection, `isListening`/`errorMessage` behavior, and `clear()`.
+  - `KeyFinderViewModelTests` — pure logic, no AVFoundation dependency: `addChord()` no-ops without a selected root, builds a `Chord` from the selected root/quality (defaulting to `.major`), and resets the selection afterward; `removeChord(at:)` bounds-checks; `clear()` resets both chords and selection; `result` mirrors `KeyFinder.findKey(for:)`.
 - Integration: extract buffer-conversion/detection-invocation logic out of the `installTap` closure so `AudioEngineController` can be exercised with synthetic buffers, no live mic needed.
 - UI tests (`GuitarBuddyUITests`) cover navigation/interaction flows only (tuning picker, chord chip add/remove, result rendering) — not DSP correctness, which belongs in unit tests.
 - AAA structure (Arrange/Act/Assert), descriptive `test_<behavior>` names.

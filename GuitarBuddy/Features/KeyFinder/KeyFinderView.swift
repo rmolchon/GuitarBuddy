@@ -6,8 +6,8 @@ struct KeyFinderView: View {
     var body: some View {
         VStack(spacing: 24) {
             ChordPickerView(
-                chordInput: $viewModel.chordInput,
-                invalidInputMessage: viewModel.invalidInputMessage,
+                selectedRoot: $viewModel.selectedRoot,
+                selectedQuality: $viewModel.selectedQuality,
                 onAdd: viewModel.addChord
             )
 
