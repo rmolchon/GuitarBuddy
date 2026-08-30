@@ -10,13 +10,12 @@ struct ChordSequenceView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(chords.enumerated()), id: \.offset) { index, chord in
-                        chip(for: chord, at: index)
-                    }
+            FlowLayout(spacing: 8) {
+                ForEach(Array(chords.enumerated()), id: \.offset) { index, chord in
+                    chip(for: chord, at: index)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
