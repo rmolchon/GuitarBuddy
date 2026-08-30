@@ -18,13 +18,12 @@ final class StrumTranscriptionService: AudioTranscriptionService {
         let referencePitch = referencePitch
         return AudioTranscriptionStreamBuilder.makeStream(
             audioEngineController: audioEngineController,
-            rawStream: { $0.bufferStream },
+            rawStream: { $0.frameStream },
             logger: AppLogger.transcribe
-        ) { buffer in
-            guard let samples = AudioEngineController.samples(from: buffer) else { return nil }
+        ) { frame in
             let activePitchClasses = ChromaExtractor.activePitchClasses(
-                from: samples,
-                sampleRate: buffer.format.sampleRate,
+                from: frame.samples,
+                sampleRate: frame.sampleRate,
                 referencePitch: referencePitch
             )
             return segmenter.process(activePitchClasses: activePitchClasses)

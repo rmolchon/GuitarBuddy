@@ -63,6 +63,16 @@ final class TunerViewModel {
             for await pitch in stream {
                 self.lastDetectedFrequency = pitch
             }
+
+            // The stream also ends when the engine is torn down mid-session (interruption,
+            // route loss, config change). Reset the button and surface any error so it
+            // never sits on "Listening" with a dead engine.
+            self.isListening = false
+            self.lastDetectedFrequency = nil
+            if let terminationError = audioEngineController.terminationError {
+                AppLogger.tuner.warning("Audio session ended: \(terminationError.localizedDescription, privacy: .public)")
+                self.errorMessage = terminationError.localizedDescription
+            }
         }
     }
 

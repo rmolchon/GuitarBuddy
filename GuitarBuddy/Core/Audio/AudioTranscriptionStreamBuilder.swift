@@ -29,7 +29,16 @@ enum AudioTranscriptionStreamBuilder {
                         continuation.yield(event)
                     }
                 }
-                continuation.finish()
+
+                // The raw stream also ends when the engine is torn down by an interruption,
+                // route loss, or config change — surface that as a thrown error rather than
+                // a silent, clean finish.
+                if let terminationError = audioEngineController.terminationError {
+                    logger.error("Audio session ended abnormally: \(terminationError.localizedDescription, privacy: .public)")
+                    continuation.finish(throwing: terminationError)
+                } else {
+                    continuation.finish()
+                }
             }
 
             continuation.onTermination = { [audioEngineController] _ in
