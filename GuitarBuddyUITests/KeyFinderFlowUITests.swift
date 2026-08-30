@@ -40,6 +40,31 @@ final class KeyFinderFlowUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["chordChip_G"].waitForExistence(timeout: 2))
     }
 
+    func test_lastChordChipStaysReachableWhenManyChordsAreAdded() {
+        // Arrange
+        let app = XCUIApplication()
+        openKeyFinder(app)
+        let addButton = app.buttons["addChordButton"]
+        XCTAssertTrue(app.buttons["chordRootButton_C"].waitForExistence(timeout: 5))
+
+        func add(root: String, quality: String? = nil) {
+            app.buttons["chordRootButton_\(root)"].tap()
+            if let quality { app.buttons["chordQualityButton_\(quality)"].tap() }
+            addButton.tap()
+        }
+
+        // Act – add enough distinct chords to overflow a single on-screen row.
+        for root in ["C", "D", "E", "F", "G", "A", "B"] { add(root: root) }
+        for root in ["C", "D", "E", "F", "G"] { add(root: root, quality: "minor") }
+
+        // Assert – the most recently added chip must remain visible and removable.
+        let lastRemove = app.buttons["removeChord_Gm"]
+        XCTAssertTrue(lastRemove.waitForExistence(timeout: 5))
+        XCTAssertTrue(lastRemove.isHittable, "The newest chord chip should stay on-screen, not scrolled out of reach")
+        lastRemove.tap()
+        XCTAssertFalse(app.staticTexts["chordChip_Gm"].waitForExistence(timeout: 2))
+    }
+
     func test_selectingAQualityAddsTheCorrespondingChordType() {
         let app = XCUIApplication()
         openKeyFinder(app)
