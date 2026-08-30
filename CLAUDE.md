@@ -27,14 +27,15 @@ GuitarBuddy/
   Core/
     Audio/                 # PitchDetectorProtocol, PitchDetector (YIN), AudioEngineController, RecordPermissionProviding,
                             # AudioTranscriptionService (protocol) + HumTranscriptionService/StrumTranscriptionService (concrete),
-                            # FrameDebouncer, HumNoteSegmenter, StrumSegmenter, ChromaExtractor, FrequencyToNote
+                            # FrameDebouncer, HumNoteSegmenter, StrumSegmenter, ChromaExtractor, FrequencyToNote,
+                            # ChordFrequencies, ChordAudioSynthesizer, ChordSequencePlayer (chord playback)
     Logging/                # AppLogger (os.Logger instances namespaced per feature)
     MusicTheory/            # Note, Chord, ChordQuality, ChordRecognizer, Tuning, Key, KeySignatureTable, KeyFinder
   Resources/                # Assets.xcassets, Info.plist
 GuitarBuddyTests/
   Audio/                    # PitchDetectorTests, FrequencyToNoteTests, FrameDebouncerTests, HumNoteSegmenterTests,
                             # ChromaExtractorTests, StrumSegmenterTests, HumTranscriptionServiceTests, StrumTranscriptionServiceTests,
-                            # AudioEngineControllerTests, FakeRecordPermissionProvider
+                            # AudioEngineControllerTests, FakeRecordPermissionProvider, ChordFrequenciesTests, ChordAudioSynthesizerTests
   HumMode/                  # HumModeViewModelTests
   KeyFinder/                # KeyFinderViewModelTests
   Transcribe/               # TranscribeViewModelTests
@@ -60,6 +61,7 @@ GuitarBuddyUITests/
 - Chords are built by onscreen selection, not typed text: `RootPickerView` (a 12-button grid of `PitchClass.allCases`) and `QualityPickerView` (a scrollable row of `ChordQuality.allCases`) each bind to a `KeyFinderViewModel` selection property; `ChordPickerView` composes both plus a live chord-name preview and the `Add` button. Because the chord is assembled directly from two closed enums, there's no free-text parsing and therefore no invalid-input state to handle in this flow.
 - `Chord.parse(_ symbol: String) -> Chord?` still lives on `Chord` and normalizes chord-symbol strings (`C`, `Dm`, `F#`, `Bb`, `G7`, `Am7`, `Fmaj7`, `Bdim`, `Caug`, `Dsus2/4`, unicode `♯`/`♭`, case-insensitive) into `root: PitchClass` + `quality: ChordQuality` — it's exhaustively covered by `ChordTests` as a pure `Core` utility, but the Key Finder UI no longer calls it now that chord entry is picker-based.
 - `KeyFinder.findKey(for: [Chord]) -> KeyMatchResult` is a pure, dependency-free function: precompute diatonic scale-degree chord slots (I, ii, iii, IV, V, vi, vii°) for each of the 12 major keys, match loosely by quality-family (major/minor/diminished) so `G`/`G7`/`Gmaj7` all satisfy the V slot, score by fraction of diatonic input chords, and break ties by (1) tonic/relative-minor presence, then (2) V/V7 presence.
+- The `Play` button hears back the entered sequence via three layered pieces, split so the math stays unit-testable without touching AVFoundation: `ChordQuality.intervals` (semitone offsets per quality — the single source of truth also used by `ChordRecognizer`) → `ChordFrequencies.frequencies(for:baseOctave:)` (Core/Audio; walks each interval through `FrequencyToNote.neighborNote` rather than `PitchClass.applying(semitones:)`, since the latter wraps within one octave and would fold a 7th chord's upper tones back down instead of letting them ring above the root) → `ChordAudioSynthesizer.samples(for:)` (Core/Audio; pure `[Float]` — sums sine waves per chord, linear fade in/out to avoid clicks, brief silence between chords). `ChordSequencePlayer` (`ChordSequencePlaying` protocol) is the thin AVAudioEngine/AVAudioPlayerNode wrapper that turns those samples into one scheduled buffer and awaits playback completion; `KeyFinderViewModel` injects it (defaulting to the real implementation) so `KeyFinderViewModelTests` can drive `isPlaying`/`playbackErrorMessage` deterministically with a fake.
 
 ### Hum Mode
 
@@ -115,7 +117,8 @@ TDD is required: write the failing test file before its implementation file.
   - `HumTranscriptionServiceTests` / `StrumTranscriptionServiceTests` — verify a fresh `AudioEngineController` is created per `transcribe()` call (each Start/Stop/Start session gets its own non-finished stream, since `AsyncStream` is single-use once `.stop()` finishes it), and that an `engine.start()` failure propagates through the stream and still calls `.stop()` to release any installed tap. Inject `FakeRecordPermissionProvider` (granted) so the failure deterministically exercises the `invalidInputFormat` path rather than depending on live system permission state.
   - `AudioEngineControllerTests` — also covers the `RecordPermissionProviding` branches directly: `permissionDenied` when already denied, and when an undetermined request is declined.
   - `HumModeViewModelTests` / `TranscribeViewModelTests` — use a fake `AudioTranscriptionService` (no AVFoundation) to verify event collection, `isListening`/`errorMessage` behavior, and `clear()`.
-  - `KeyFinderViewModelTests` — pure logic, no AVFoundation dependency: `addChord()` no-ops without a selected root, builds a `Chord` from the selected root/quality (defaulting to `.major`), and resets the selection afterward; `removeChord(at:)` bounds-checks; `clear()` resets both chords and selection; `result` mirrors `KeyFinder.findKey(for:)`.
+  - `KeyFinderViewModelTests` — pure logic, no AVFoundation dependency: `addChord()` no-ops without a selected root, builds a `Chord` from the selected root/quality (defaulting to `.major`), and resets the selection afterward; `removeChord(at:)` bounds-checks; `clear()` resets both chords and selection (and stops any in-progress playback); `result` mirrors `KeyFinder.findKey(for:)`; playback (`playChords()`/`stopPlayback()`) is exercised against a fake `ChordSequencePlaying` to deterministically drive `isPlaying`/`playbackErrorMessage` without touching real audio.
+  - `ChordFrequenciesTests` / `ChordAudioSynthesizerTests` — pure math, no AVFoundation: chord-tone frequencies match root/third/fifth(/seventh) at the expected octave and stay monotonically increasing across an octave-crossing interval; synthesized sample buffers have the expected frame count per chord plus inter-chord silence gaps, fade in from zero, and never exceed the configured amplitude.
 - Integration: extract buffer-conversion/detection-invocation logic out of the `installTap` closure so `AudioEngineController` can be exercised with synthetic buffers, no live mic needed.
 - UI tests (`GuitarBuddyUITests`) cover navigation/interaction flows only (tuning picker, chord chip add/remove, result rendering) — not DSP correctness, which belongs in unit tests.
 - AAA structure (Arrange/Act/Assert), descriptive `test_<behavior>` names.

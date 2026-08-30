@@ -54,4 +54,19 @@ enum ChordQuality: Equatable, CaseIterable {
             return .diminishedFamily
         }
     }
+
+    /// Semitone offsets from the root for each chord tone.
+    var intervals: [Int] {
+        switch self {
+        case .major: return [0, 4, 7]
+        case .minor: return [0, 3, 7]
+        case .dominant7: return [0, 4, 7, 10]
+        case .major7: return [0, 4, 7, 11]
+        case .minor7: return [0, 3, 7, 10]
+        case .diminished: return [0, 3, 6]
+        case .augmented: return [0, 4, 8]
+        case .sus2: return [0, 2, 7]
+        case .sus4: return [0, 5, 7]
+        }
+    }
 }
