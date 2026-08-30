@@ -63,4 +63,39 @@ final class KeyFinderFlowUITests: XCTestCase {
         app.buttons["chordRootButton_D"].tap()
         XCTAssertTrue(app.buttons["addChordButton"].isEnabled)
     }
+
+    func test_playButtonDisablesWhilePlayingAndReEnablesWhenPlaybackFinishes() {
+        let app = XCUIApplication()
+        openKeyFinder(app)
+
+        XCTAssertTrue(app.buttons["chordRootButton_C"].waitForExistence(timeout: 5))
+        app.buttons["chordRootButton_C"].tap()
+        app.buttons["addChordButton"].tap()
+
+        let playButton = app.buttons["playChordsButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(playButton.isEnabled)
+
+        playButton.tap()
+        XCTAssertFalse(playButton.isEnabled)
+
+        let reenabled = NSPredicate(format: "isEnabled == true")
+        expectation(for: reenabled, evaluatedWith: playButton)
+        waitForExpectations(timeout: 10)
+    }
+
+    func test_clearingWhilePlayingStopsPlaybackImmediately() {
+        let app = XCUIApplication()
+        openKeyFinder(app)
+
+        XCTAssertTrue(app.buttons["chordRootButton_C"].waitForExistence(timeout: 5))
+        app.buttons["chordRootButton_C"].tap()
+        app.buttons["addChordButton"].tap()
+        app.buttons["playChordsButton"].tap()
+
+        app.buttons["clearChordsButton"].tap()
+
+        XCTAssertFalse(app.buttons["playChordsButton"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["chordChip_C"].exists)
+    }
 }

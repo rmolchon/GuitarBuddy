@@ -16,15 +16,32 @@ struct KeyFinderView: View {
             if !viewModel.chords.isEmpty {
                 KeyResultView(result: viewModel.result)
 
-                Button("Clear", role: .destructive, action: viewModel.clear)
+                HStack(spacing: 16) {
+                    Button(viewModel.isPlaying ? "Playing…" : "Play") {
+                        viewModel.playChords()
+                    }
                     .font(.footnote)
-                    .accessibilityIdentifier("clearChordsButton")
+                    .disabled(viewModel.isPlaying)
+                    .accessibilityIdentifier("playChordsButton")
+
+                    Button("Clear", role: .destructive, action: viewModel.clear)
+                        .font(.footnote)
+                        .accessibilityIdentifier("clearChordsButton")
+                }
+
+                if let playbackErrorMessage = viewModel.playbackErrorMessage {
+                    Text(playbackErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("playbackErrorMessage")
+                }
             }
 
             Spacer()
         }
         .padding()
         .navigationTitle("Key Finder")
+        .onDisappear { viewModel.stopPlayback() }
     }
 }
 
