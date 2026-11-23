@@ -3,7 +3,9 @@ import Foundation
 /// Collapses a jittery frequency stream into discrete note-onset events using a `FrameDebouncer`,
 /// mapping raw frequency readings to notes via `FrequencyToNote` first. Notes are compared by
 /// `pitchClass`/`octave` only (not full `Equatable`), since `cents` jitters every frame.
-final class HumNoteSegmenter {
+///
+/// `@unchecked Sendable` for the same single-consumer reason as `FrameDebouncer`.
+final class HumNoteSegmenter: @unchecked Sendable {
     private let referencePitch: Double
     private let debouncer: FrameDebouncer<DetectedNote>
 

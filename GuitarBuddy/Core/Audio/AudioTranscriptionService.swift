@@ -1,12 +1,12 @@
-enum AudioSource {
+enum AudioSource: Sendable {
     case microphone
 }
 
-enum TranscriptionEvent: Equatable {
+enum TranscriptionEvent: Equatable, Sendable {
     case note(DetectedNote)
     case chord(Chord)
 }
 
-protocol AudioTranscriptionService {
+protocol AudioTranscriptionService: Sendable {
     func transcribe(audioSource: AudioSource) -> AsyncThrowingStream<TranscriptionEvent, Error>
 }

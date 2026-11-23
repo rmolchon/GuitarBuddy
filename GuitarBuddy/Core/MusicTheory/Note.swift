@@ -1,4 +1,4 @@
-enum PitchClass: Int, CaseIterable, Equatable {
+enum PitchClass: Int, CaseIterable, Equatable, Sendable {
     case c = 0
     case cSharp
     case d

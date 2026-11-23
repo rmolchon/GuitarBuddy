@@ -1,4 +1,5 @@
 import AVFoundation
+import os
 
 enum AudioEngineControllerError: LocalizedError, Equatable {
     case invalidInputFormat
@@ -27,7 +28,11 @@ enum AudioEngineControllerError: LocalizedError, Equatable {
 /// - Pitch detection runs on `processingQueue`, never the real-time audio render thread.
 /// - Interruptions / route changes / engine-config changes stop the session cleanly and
 ///   expose `terminationError` so consumers can surface it (no silent death).
-final class AudioEngineController {
+///
+/// Concurrency: `@unchecked Sendable` because the only non-`Sendable` stored property is the
+/// `AVAudioEngine`, which is touched solely from `start()`/`performCleanup`. Every piece of
+/// mutable state lives in `state`, which is only accessed through its lock.
+final class AudioEngineController: @unchecked Sendable {
     /// `AsyncStream` defaults to unbounded buffering; for a live audio feed a backed-up
     /// consumer just wants the freshest frames, not a growing history. These caps give
     /// roughly a second of slack at the ~93 ms frame cadence before the oldest are dropped.
@@ -44,16 +49,31 @@ final class AudioEngineController {
     /// real-time audio render thread the tap callback runs on.
     private let processingQueue = DispatchQueue(label: "com.guitarbuddy.audio.processing", qos: .userInitiated)
 
-    private let stateLock = NSLock()
-    private var isRunning = false
-    private var isStarting = false
-    private var tapInstalled = false
-    private var sessionActivated = false
-    private var observers: [NSObjectProtocol] = []
+    /// All mutable controller state, guarded by `state`'s lock. `NSObjectProtocol` observer
+    /// tokens aren't `Sendable`, hence `@unchecked` — they're only ever touched under the lock.
+    private struct State: @unchecked Sendable {
+        var isRunning = false
+        var isStarting = false
+        var tapInstalled = false
+        var sessionActivated = false
+        var observers: [NSObjectProtocol] = []
+        var terminationError: AudioEngineControllerError?
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    /// What `performCleanup` must undo, captured atomically while resetting the state.
+    private struct TeardownSnapshot {
+        let hadTap: Bool
+        let hadSession: Bool
+        let observers: [NSObjectProtocol]
+    }
 
     /// Non-nil once the session ended abnormally (failed `start()`, interruption, route
     /// loss, engine reconfiguration). A normal `stop()` leaves this nil.
-    private(set) var terminationError: AudioEngineControllerError?
+    var terminationError: AudioEngineControllerError? {
+        state.withLock { $0.terminationError }
+    }
 
     let frameStream: AsyncStream<AudioFrame>
     let pitchStream: AsyncStream<Double?>
@@ -67,13 +87,14 @@ final class AudioEngineController {
         self.pitchDetector = pitchDetector
         self.permissionProvider = permissionProvider
 
-        var frameContinuation: AsyncStream<AudioFrame>.Continuation!
-        frameStream = AsyncStream(bufferingPolicy: .bufferingNewest(Self.frameBufferDepth)) { frameContinuation = $0 }
-        self.frameContinuation = frameContinuation
-
-        var pitchContinuation: AsyncStream<Double?>.Continuation!
-        pitchStream = AsyncStream(bufferingPolicy: .bufferingNewest(Self.pitchBufferDepth)) { pitchContinuation = $0 }
-        self.pitchContinuation = pitchContinuation
+        (frameStream, frameContinuation) = AsyncStream.makeStream(
+            of: AudioFrame.self,
+            bufferingPolicy: .bufferingNewest(Self.frameBufferDepth)
+        )
+        (pitchStream, pitchContinuation) = AsyncStream.makeStream(
+            of: Double?.self,
+            bufferingPolicy: .bufferingNewest(Self.pitchBufferDepth)
+        )
 
         registerDisruptionObservers()
     }
@@ -87,19 +108,16 @@ final class AudioEngineController {
 
         // Single lock-guarded check-and-set so overlapping start() calls on the same
         // instance can't both reach installTap (a double tap install throws and crashes).
-        stateLock.lock()
-        guard !isRunning, !isStarting else {
-            stateLock.unlock()
+        let didClaimStart = state.withLock { state -> Bool in
+            guard !state.isRunning, !state.isStarting else { return false }
+            state.isStarting = true
+            return true
+        }
+        guard didClaimStart else {
             AppLogger.audio.debug("start() ignored — engine already running or starting")
             return
         }
-        isStarting = true
-        stateLock.unlock()
-        defer {
-            stateLock.lock()
-            isStarting = false
-            stateLock.unlock()
-        }
+        defer { state.withLock { $0.isStarting = false } }
 
         // A prior stop()/disruption removes the observers; a fresh session needs them back.
         registerDisruptionObservers()
@@ -112,10 +130,10 @@ final class AudioEngineController {
             throw error
         }
 
-        stateLock.lock()
-        isRunning = true
-        terminationError = nil
-        stateLock.unlock()
+        state.withLock {
+            $0.isRunning = true
+            $0.terminationError = nil
+        }
         AppLogger.audio.debug("Audio engine started")
     }
 
@@ -141,9 +159,7 @@ final class AudioEngineController {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
         try session.setActive(true)
-        stateLock.lock()
-        sessionActivated = true
-        stateLock.unlock()
+        state.withLock { $0.sessionActivated = true }
 
         // Re-read the format *after* the session is active — on a real device the input
         // format isn't trustworthy until then, and installing a tap with a stale format
@@ -155,15 +171,15 @@ final class AudioEngineController {
         }
 
         engine.prepare()
+        // `self` is `Sendable` (see the class doc), so the tap and queue closures capture it
+        // weakly just to avoid a retain cycle through the engine's tap, not for thread safety.
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: tapFormat) { [weak self] buffer, _ in
             guard let self, let frame = Self.frame(from: buffer) else { return }
             self.processingQueue.async { [weak self] in
                 self?.handle(frame)
             }
         }
-        stateLock.lock()
-        tapInstalled = true
-        stateLock.unlock()
+        state.withLock { $0.tapInstalled = true }
 
         do {
             try engine.start()
@@ -174,20 +190,24 @@ final class AudioEngineController {
     }
 
     private func performCleanup(dueTo error: AudioEngineControllerError?) {
-        stateLock.lock()
-        let hadTap = tapInstalled
-        let hadSession = sessionActivated
-        tapInstalled = false
-        sessionActivated = false
-        isRunning = false
-        if let error {
-            terminationError = error
+        let snapshot = state.withLockUnchecked { state -> TeardownSnapshot in
+            let snapshot = TeardownSnapshot(
+                hadTap: state.tapInstalled,
+                hadSession: state.sessionActivated,
+                observers: state.observers
+            )
+            state.tapInstalled = false
+            state.sessionActivated = false
+            state.isRunning = false
+            if let error {
+                state.terminationError = error
+            }
+            state.observers = []
+            return snapshot
         }
-        let observersToRemove = observers
-        observers = []
-        stateLock.unlock()
+        let (hadTap, hadSession) = (snapshot.hadTap, snapshot.hadSession)
 
-        for observer in observersToRemove {
+        for observer in snapshot.observers {
             NotificationCenter.default.removeObserver(observer)
         }
         if hadTap {
@@ -207,9 +227,7 @@ final class AudioEngineController {
     // MARK: - Disruption handling (fail clean, surface an error)
 
     private func registerDisruptionObservers() {
-        stateLock.lock()
-        let alreadyRegistered = !observers.isEmpty
-        stateLock.unlock()
+        let alreadyRegistered = state.withLock { !$0.observers.isEmpty }
         guard !alreadyRegistered else { return }
 
         let center = NotificationCenter.default
@@ -237,9 +255,9 @@ final class AudioEngineController {
             self?.handleDisruption("audio engine configuration changed")
         }
 
-        stateLock.lock()
-        observers = [interruption, routeChange, configChange]
-        stateLock.unlock()
+        // Observer tokens aren't `Sendable`; they never leave the lock's critical section
+        // except to be passed straight to `removeObserver` in `performCleanup`.
+        state.withLockUnchecked { $0.observers = [interruption, routeChange, configChange] }
     }
 
     private func handleDisruption(_ reason: String) {
@@ -247,9 +265,7 @@ final class AudioEngineController {
         // even between init and start(). Callers always create a fresh controller per
         // session (they never reuse one whose streams have finished), so a disruption in
         // that brief window just means the next start() gets a new instance.
-        stateLock.lock()
-        let alreadyTornDown = observers.isEmpty
-        stateLock.unlock()
+        let alreadyTornDown = state.withLock { $0.observers.isEmpty }
         guard !alreadyTornDown else { return }
 
         AppLogger.audio.warning("Audio session disrupted: \(reason, privacy: .public) — stopping engine")

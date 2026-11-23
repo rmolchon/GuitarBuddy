@@ -1,11 +1,11 @@
 import Foundation
 
 final class StrumTranscriptionService: AudioTranscriptionService {
-    private let makeAudioEngineController: () -> AudioEngineController
+    private let makeAudioEngineController: @Sendable () -> AudioEngineController
     private let referencePitch: Double
 
     init(
-        makeAudioEngineController: @escaping () -> AudioEngineController = { AudioEngineController() },
+        makeAudioEngineController: @escaping @Sendable () -> AudioEngineController = { AudioEngineController() },
         referencePitch: Double = 440.0
     ) {
         self.makeAudioEngineController = makeAudioEngineController

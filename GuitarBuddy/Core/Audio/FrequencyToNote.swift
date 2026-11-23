@@ -1,6 +1,6 @@
 import Foundation
 
-struct DetectedNote: Equatable {
+struct DetectedNote: Equatable, Sendable {
     let pitchClass: PitchClass
     let octave: Int
     let cents: Double

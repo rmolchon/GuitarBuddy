@@ -5,7 +5,10 @@ import Foundation
 /// (debounces transient blips), and only a change from the last confirmed value emits an event.
 /// `nil` (silence/no-signal frames) resets all state, so the same value seen again after a gap
 /// re-arms and re-emits.
-final class FrameDebouncer<Value> {
+///
+/// `@unchecked Sendable`: holds unsynchronized mutable state, so each instance must be owned by a
+/// single consumer (one transcription stream's task) and never used concurrently.
+final class FrameDebouncer<Value>: @unchecked Sendable {
     private let requiredConsecutiveFrames: Int
     private let areEqual: (Value, Value) -> Bool
 

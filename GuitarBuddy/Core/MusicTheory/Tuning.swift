@@ -1,4 +1,4 @@
-struct Tuning: Hashable {
+struct Tuning: Hashable, Sendable {
     let name: String
     let stringFrequencies: [Double]
 
