@@ -1,6 +1,7 @@
 import XCTest
 @testable import GuitarBuddy
 
+@MainActor
 final class KeyFinderViewModelTests: XCTestCase {
     func test_addChordDoesNothingWhenNoRootIsSelected() {
         // Arrange
@@ -265,7 +266,7 @@ final class KeyFinderViewModelTests: XCTestCase {
         // Act: the stopped first playback's underlying task finally completes late, after the
         // second playback has already started.
         fake.finishPlayback(at: 0)
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        try? await Task.sleep(for: .milliseconds(50))
 
         // Assert: the second, still in-flight playback's state must not be clobbered.
         XCTAssertTrue(viewModel.isPlaying)
@@ -276,7 +277,7 @@ final class KeyFinderViewModelTests: XCTestCase {
     private func waitUntil(_ condition: @escaping () -> Bool, timeout: TimeInterval = 1.0) async {
         let deadline = Date().addingTimeInterval(timeout)
         while !condition(), Date() < deadline {
-            try? await Task.sleep(nanoseconds: 5_000_000)
+            try? await Task.sleep(for: .milliseconds(5))
         }
     }
 }
@@ -291,29 +292,45 @@ private enum ChordPlaybackTestError: Error, LocalizedError {
 /// each in-flight call finishes via `finishPlayback(at:)`, indexed by call order. This is what
 /// lets `test_aStalePlaybackTaskDoesNotOverwriteANewerOnesState` simulate a stopped playback
 /// finishing late, after a newer one has already started.
-private final class FakeChordSequencePlayer: ChordSequencePlaying {
-    private(set) var playedChordSequences: [[Chord]] = []
-    private(set) var stopCallCount = 0
-    var errorToThrow: Error?
+private final class FakeChordSequencePlayer: ChordSequencePlaying, @unchecked Sendable {
+    private struct State {
+        var playedChordSequences: [[Chord]] = []
+        var stopCallCount = 0
+        var errorToThrow: Error?
+        var continuations: [CheckedContinuation<Void, Error>] = []
+    }
 
-    private var continuations: [CheckedContinuation<Void, Error>] = []
+    private let state = LockedBox(State())
+
+    var playedChordSequences: [[Chord]] { state.value.playedChordSequences }
+    var stopCallCount: Int { state.value.stopCallCount }
+    var errorToThrow: Error? {
+        get { state.value.errorToThrow }
+        set { state.withValue { $0.errorToThrow = newValue } }
+    }
 
     func play(_ chords: [Chord]) async throws {
-        playedChordSequences.append(chords)
+        let errorToThrow = state.withValue { state -> Error? in
+            state.playedChordSequences.append(chords)
+            return state.errorToThrow
+        }
         if let errorToThrow {
             throw errorToThrow
         }
         try await withCheckedThrowingContinuation { continuation in
-            continuations.append(continuation)
+            state.withValue { $0.continuations.append(continuation) }
         }
     }
 
     func stop() {
-        stopCallCount += 1
+        state.withValue { $0.stopCallCount += 1 }
     }
 
     func finishPlayback(at index: Int = 0) {
-        guard continuations.indices.contains(index) else { return }
-        continuations.remove(at: index).resume()
+        let continuation = state.withValue { state -> CheckedContinuation<Void, Error>? in
+            guard state.continuations.indices.contains(index) else { return nil }
+            return state.continuations.remove(at: index)
+        }
+        continuation?.resume()
     }
 }

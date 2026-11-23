@@ -1,7 +1,8 @@
 import AVFoundation
 import Foundation
+import os
 
-protocol ChordSequencePlaying {
+protocol ChordSequencePlaying: Sendable {
     func play(_ chords: [Chord]) async throws
     func stop()
 }
@@ -13,14 +14,17 @@ protocol ChordSequencePlaying {
 /// `stop()` resumes the pending continuation itself rather than relying on
 /// `AVAudioPlayerNode.stop()` to fire the buffer's completion handler — that behavior isn't
 /// guaranteed, and an un-resumed `CheckedContinuation` would leak the playback task forever.
-/// `continuationLock` guards against the natural completion handler and an explicit `stop()`
-/// racing to resume the same continuation from different threads.
-final class ChordSequencePlayer: ChordSequencePlaying {
+/// `pendingContinuation`'s lock guards against the natural completion handler and an explicit
+/// `stop()` racing to resume the same continuation from different threads.
+///
+/// `@unchecked Sendable`: the `AVAudioEngine`/`AVAudioPlayerNode` stored properties aren't
+/// `Sendable`, but the player is driven by one playback at a time and the only state shared
+/// across threads (the continuation) lives behind the lock.
+final class ChordSequencePlayer: ChordSequencePlaying, @unchecked Sendable {
     private let engine: AVAudioEngine
     private let playerNode: AVAudioPlayerNode
     private let format: AVAudioFormat
-    private let continuationLock = NSLock()
-    private var pendingContinuation: CheckedContinuation<Void, Never>?
+    private let pendingContinuation = OSAllocatedUnfairLock<CheckedContinuation<Void, Never>?>(initialState: nil)
 
     init(engine: AVAudioEngine = AVAudioEngine()) {
         self.engine = engine
@@ -43,9 +47,7 @@ final class ChordSequencePlayer: ChordSequencePlaying {
 
         await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
-                continuationLock.lock()
-                pendingContinuation = continuation
-                continuationLock.unlock()
+                pendingContinuation.withLock { $0 = continuation }
 
                 playerNode.scheduleBuffer(buffer) { [weak self] in
                     self?.resumePendingContinuation()
@@ -63,10 +65,10 @@ final class ChordSequencePlayer: ChordSequencePlaying {
     }
 
     private func resumePendingContinuation() {
-        continuationLock.lock()
-        let continuation = pendingContinuation
-        pendingContinuation = nil
-        continuationLock.unlock()
+        let continuation = pendingContinuation.withLock { pending -> CheckedContinuation<Void, Never>? in
+            defer { pending = nil }
+            return pending
+        }
         continuation?.resume()
     }
 

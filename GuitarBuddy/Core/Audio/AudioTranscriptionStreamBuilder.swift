@@ -7,11 +7,11 @@ import os
 /// `TranscriptionEvent` — this factors out the surrounding engine start, error propagation,
 /// and cancellation/cleanup they'd otherwise duplicate.
 enum AudioTranscriptionStreamBuilder {
-    static func makeStream<Raw>(
+    static func makeStream<Raw: Sendable>(
         audioEngineController: AudioEngineController,
-        rawStream: @escaping (AudioEngineController) -> AsyncStream<Raw>,
+        rawStream: @escaping @Sendable (AudioEngineController) -> AsyncStream<Raw>,
         logger: Logger,
-        process: @escaping (Raw) -> TranscriptionEvent?
+        process: @escaping @Sendable (Raw) -> TranscriptionEvent?
     ) -> AsyncThrowingStream<TranscriptionEvent, Error> {
         AsyncThrowingStream { continuation in
             let streamTask = Task {

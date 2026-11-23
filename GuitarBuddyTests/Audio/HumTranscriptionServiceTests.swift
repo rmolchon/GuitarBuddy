@@ -4,10 +4,10 @@ import XCTest
 final class HumTranscriptionServiceTests: XCTestCase {
     func test_transcribeCreatesAFreshControllerOnEachCallSoRestartingWorks() {
         // Arrange
-        var createdControllers: [AudioEngineController] = []
+        let createdControllers = LockedBox<[AudioEngineController]>([])
         let service = HumTranscriptionService(makeAudioEngineController: {
             let controller = AudioEngineController(pitchDetector: PitchDetector())
-            createdControllers.append(controller)
+            createdControllers.withValue { $0.append(controller) }
             return controller
         })
 
@@ -17,8 +17,9 @@ final class HumTranscriptionServiceTests: XCTestCase {
 
         // Assert: a distinct controller (and therefore a fresh, non-finished pitchStream)
         // backs every session, instead of reusing one whose AsyncStream was already finished.
-        XCTAssertEqual(createdControllers.count, 2)
-        XCTAssertFalse(createdControllers[0] === createdControllers[1])
+        let controllers = createdControllers.value
+        XCTAssertEqual(controllers.count, 2)
+        XCTAssertFalse(controllers[0] === controllers[1])
     }
 
     func test_transcribePropagatesEngineStartFailureAndStopsTheController() async {

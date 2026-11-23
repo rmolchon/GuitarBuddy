@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class TranscribeFlowUITests: XCTestCase {
     private func openTranscribe(_ app: XCUIApplication) {
         app.launch()

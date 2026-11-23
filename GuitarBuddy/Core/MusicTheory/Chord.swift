@@ -1,6 +1,6 @@
 import Foundation
 
-struct Chord: Equatable {
+struct Chord: Equatable, Sendable {
     let root: PitchClass
     let quality: ChordQuality
 

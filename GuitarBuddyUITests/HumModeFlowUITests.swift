@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class HumModeFlowUITests: XCTestCase {
     private func openHumMode(_ app: XCUIApplication) {
         app.launch()

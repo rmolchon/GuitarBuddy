@@ -4,7 +4,7 @@ enum QualityFamily: Equatable {
     case diminishedFamily
 }
 
-enum ChordQuality: Equatable, CaseIterable {
+enum ChordQuality: Equatable, CaseIterable, Sendable {
     case major
     case minor
     case dominant7

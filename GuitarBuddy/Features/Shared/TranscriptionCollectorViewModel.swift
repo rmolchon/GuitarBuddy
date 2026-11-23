@@ -8,6 +8,7 @@ import os
 /// array — this factors out the task management, error handling, and `clear()` they'd otherwise
 /// duplicate. `items` is settable only from this file, so subclasses can read but not mutate it
 /// directly; they expose it under a feature-specific name (`notes`, `chords`).
+@MainActor
 @Observable
 class TranscriptionCollectorViewModel<Output> {
     private let transcriptionService: AudioTranscriptionService

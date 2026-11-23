@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class TunerFlowUITests: XCTestCase {
     func test_tunerTabIsSelectedByDefaultAndShowsStandardTuning() {
         // Arrange

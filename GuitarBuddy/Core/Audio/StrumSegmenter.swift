@@ -4,7 +4,9 @@ import Foundation
 /// `FrameDebouncer`, mapping each frame's active pitch classes to a `Chord` via `ChordRecognizer`
 /// first. An unrecognizable pitch-class cluster is treated the same as silence (`nil`), since
 /// there's no `Chord` value to hold a candidate for.
-final class StrumSegmenter {
+///
+/// `@unchecked Sendable` for the same single-consumer reason as `FrameDebouncer`.
+final class StrumSegmenter: @unchecked Sendable {
     private let debouncer: FrameDebouncer<Chord>
 
     init(requiredConsecutiveFrames: Int = 2) {
