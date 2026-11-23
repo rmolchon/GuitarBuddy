@@ -12,7 +12,7 @@ final class SyntheticInstrumentDSPTests: XCTestCase {
 
     func test_everyStandardTuningStringIsDetectedWithinFiveCentsOnEveryFrame() {
         for frequency in Tuning.standard.stringFrequencies {
-            let signal = SyntheticInstrument.note(frequency: frequency, duration: 1.0, timbre: .forFrequency(frequency))
+            let signal = SyntheticInstrument.note(frequency: frequency, duration: 0.5, timbre: .forFrequency(frequency))
             for (index, frame) in SyntheticInstrument.frames(of: signal).enumerated() {
                 let detected = detector.detectPitch(from: frame, sampleRate: sampleRate)
                 XCTAssertNotNil(detected, "string \(frequency) Hz frame \(index) not detected")
@@ -79,7 +79,7 @@ final class SyntheticInstrumentDSPTests: XCTestCase {
     func test_openChordStrumsAreRecognizedOnSustainedFrames() {
         XCTExpectFailure("ChromaExtractor single-frame thresholding misreads sustained open chords")
         for chord in openChords {
-            let signal = SyntheticInstrument.strum(frequencies: chord.frequencies, duration: 1.0)
+            let signal = SyntheticInstrument.strum(frequencies: chord.frequencies, duration: 0.7)
             let frames = SyntheticInstrument.frames(of: signal)
             // Skip frame 0: the strum is still being plucked string by string.
             for (index, frame) in frames.enumerated().dropFirst() {
@@ -99,8 +99,8 @@ final class SyntheticInstrumentDSPTests: XCTestCase {
         var events: [TranscriptionEvent] = []
         for name in progression {
             guard let chord = openChords.first(where: { $0.name == name }) else { return XCTFail("missing \(name)") }
-            let signal = SyntheticInstrument.strum(frequencies: chord.frequencies, duration: 0.8)
-                + SyntheticInstrument.silence(duration: 0.4)
+            let signal = SyntheticInstrument.strum(frequencies: chord.frequencies, duration: 0.6)
+                + SyntheticInstrument.silence(duration: 0.3)
             for frame in SyntheticInstrument.frames(of: signal) {
                 let pitchClasses = ChromaExtractor.activePitchClasses(from: frame, sampleRate: sampleRate)
                 if let event = segmenter.process(activePitchClasses: pitchClasses) { events.append(event) }
@@ -132,8 +132,8 @@ final class SyntheticInstrumentDSPTests: XCTestCase {
         var notes: [DetectedNote] = []
         for hummed in melody {
             let signal = SyntheticInstrument.note(
-                frequency: hummed.frequency, duration: 0.7, timbre: .voice, vibratoCents: 20, amplitude: 0.4
-            ) + SyntheticInstrument.silence(duration: 0.25)
+                frequency: hummed.frequency, duration: 0.5, timbre: .voice, vibratoCents: 20, amplitude: 0.4
+            ) + SyntheticInstrument.silence(duration: 0.2)
             for frame in SyntheticInstrument.frames(of: signal) {
                 let pitch = detector.detectPitch(from: frame, sampleRate: sampleRate)
                 if case .note(let note)? = segmenter.process(frequency: pitch) { notes.append(note) }

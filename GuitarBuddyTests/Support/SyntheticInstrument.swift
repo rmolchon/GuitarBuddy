@@ -38,16 +38,18 @@ enum SyntheticInstrument {
         let attackSamples = Int(sampleRate * 0.005)
         var phase = 0.0
         var samples = [Float](repeating: 0, count: count)
+        // Per-sample decay multipliers (and running envelopes) avoid an `exp` per harmonic per sample.
+        let stepDecay = timbre.harmonicAmplitudes.indices.map { exp(-Double($0 + 1) / (timbre.decaySeconds * sampleRate)) }
+        var envelope = [Double](repeating: 1, count: timbre.harmonicAmplitudes.count)
         for index in 0..<count {
             let time = Double(index) / sampleRate
-            let vibrato = vibratoCents * sin(2 * .pi * 5 * time)
-            let instantaneous = frequency * pow(2, vibrato / 1200)
+            let vibrato = vibratoCents == 0 ? 0 : vibratoCents * sin(2 * .pi * 5 * time)
+            let instantaneous = vibrato == 0 ? frequency : frequency * pow(2, vibrato / 1200)
             phase += 2 * .pi * instantaneous / sampleRate
             var value = 0.0
             for (offset, harmonicAmplitude) in timbre.harmonicAmplitudes.enumerated() {
-                let harmonic = Double(offset + 1)
-                let decay = exp(-time * harmonic / timbre.decaySeconds)
-                value += harmonicAmplitude * decay * sin(phase * harmonic)
+                value += harmonicAmplitude * envelope[offset] * sin(phase * Double(offset + 1))
+                envelope[offset] *= stepDecay[offset]
             }
             let attack = min(1, Double(index) / Double(max(1, attackSamples)))
             samples[index] = Float(amplitude * attack * value / Double(timbre.harmonicAmplitudes.count) * 2)
