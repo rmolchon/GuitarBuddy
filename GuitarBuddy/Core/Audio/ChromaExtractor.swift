@@ -6,34 +6,54 @@ import Foundation
 /// uses the Goertzel algorithm — efficient for detecting energy at a small set of known target
 /// frequencies (the same reason it's used for DTMF/telephony tone detection) — rather than a full FFT.
 enum ChromaExtractor {
-    private static let octaveRange = 2...5
+    static let octaveRange = 2...5
+    /// A pitch class counts as active when its loudest note reaches this fraction of the overall loudest.
+    static let defaultEnergyThresholdRatio = 0.3
     private static let minimumRMS = SignalEnergy.defaultMinimumRMS
+
+    /// One candidate note (a pitch class in a specific octave) and its measured magnitude.
+    private struct NoteBin {
+        let pitchClass: PitchClass
+        let magnitude: Double
+    }
 
     static func activePitchClasses(
         from samples: [Float],
         sampleRate: Double,
         referencePitch: Double = FrequencyToNote.standardReferencePitch,
-        energyThresholdRatio: Double = 0.3
+        energyThresholdRatio: Double = defaultEnergyThresholdRatio
     ) -> Set<PitchClass> {
         guard SignalEnergy.hasSufficientEnergy(samples, minimumRMS: minimumRMS) else { return [] }
 
-        var chromaEnergy = [Double](repeating: 0, count: PitchClass.allCases.count)
-        for octave in octaveRange {
-            for pitchClass in PitchClass.allCases {
-                let frequency = FrequencyToNote.frequency(forPitchClass: pitchClass, octave: octave, referencePitch: referencePitch)
-                guard frequency < sampleRate / 2 else { continue }
-                chromaEnergy[pitchClass.rawValue] += goertzelEnergy(samples: samples, targetFrequency: frequency, sampleRate: sampleRate)
-            }
-        }
+        let bins = noteBins(samples: samples, sampleRate: sampleRate, referencePitch: referencePitch)
 
-        guard let maxEnergy = chromaEnergy.max(), maxEnergy > 0 else { return [] }
-        let threshold = maxEnergy * energyThresholdRatio
+        // Each pitch class is scored by its single loudest note, not the sum across octaves.
+        // Summing let a doubled root (C3 + C4 + C5 in an open C chord) swamp the lone G or the
+        // lone third of an E major, so those chord tones fell under the threshold.
+        var chroma = [Double](repeating: 0, count: PitchClass.allCases.count)
+        for bin in bins {
+            chroma[bin.pitchClass.rawValue] = max(chroma[bin.pitchClass.rawValue], bin.magnitude)
+        }
+        guard let maxMagnitude = chroma.max(), maxMagnitude > 0 else { return [] }
+        let threshold = maxMagnitude * energyThresholdRatio
 
         return Set(
-            chromaEnergy.enumerated()
+            chroma.enumerated()
                 .filter { $0.element >= threshold }
                 .compactMap { PitchClass(rawValue: $0.offset) }
         )
+    }
+
+    /// Goertzel magnitude (amplitude-like, not squared energy) at every candidate note.
+    private static func noteBins(samples: [Float], sampleRate: Double, referencePitch: Double) -> [NoteBin] {
+        octaveRange.flatMap { octave in
+            PitchClass.allCases.compactMap { pitchClass -> NoteBin? in
+                let frequency = FrequencyToNote.frequency(forPitchClass: pitchClass, octave: octave, referencePitch: referencePitch)
+                guard frequency < sampleRate / 2 else { return nil }
+                let energy = goertzelEnergy(samples: samples, targetFrequency: frequency, sampleRate: sampleRate)
+                return NoteBin(pitchClass: pitchClass, magnitude: energy.squareRoot())
+            }
+        }
     }
 
     private static func goertzelEnergy(samples: [Float], targetFrequency: Double, sampleRate: Double) -> Double {
