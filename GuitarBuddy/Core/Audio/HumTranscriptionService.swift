@@ -6,7 +6,7 @@ final class HumTranscriptionService: AudioTranscriptionService {
 
     init(
         makeAudioEngineController: @escaping @Sendable () -> AudioEngineController = { AudioEngineController() },
-        referencePitch: Double = 440.0
+        referencePitch: Double = FrequencyToNote.standardReferencePitch
     ) {
         self.makeAudioEngineController = makeAudioEngineController
         self.referencePitch = referencePitch

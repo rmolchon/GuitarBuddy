@@ -11,8 +11,9 @@ struct TunerGaugeView: View {
     private let centsRange: ClosedRange<Double> = -50...50
     private let sweepDegrees: Double = 65
     private let bandSweepDegrees: Double = 32
-    private let greenThresholdCents: Double = 5
-    private let orangeThresholdCents: Double = 20
+    /// Cents offsets at which the needle/readout change colour; shared with `TunerView`.
+    static let inTuneCents: Double = 5
+    static let closeCents: Double = 20
 
     var body: some View {
         GeometryReader { geometry in
@@ -38,7 +39,7 @@ struct TunerGaugeView: View {
     }
 
     private func colorBand(center: CGPoint, radius: CGFloat) -> some View {
-        let greenHalfSweep = bandSweepDegrees * (greenThresholdCents / centsRange.upperBound)
+        let greenHalfSweep = bandSweepDegrees * (Self.inTuneCents / centsRange.upperBound)
         return ZStack {
             arcPath(center: center, radius: radius, fromDegrees: -bandSweepDegrees, toDegrees: -greenHalfSweep)
                 .stroke(Color.orange, style: StrokeStyle(lineWidth: 6, lineCap: .butt))
@@ -98,12 +99,12 @@ struct TunerGaugeView: View {
     }
 
     private var needleColor: Color {
-        Self.tuningColor(forCents: cents, greenThreshold: greenThresholdCents, orangeThreshold: orangeThresholdCents)
+        Self.tuningColor(forCents: cents)
     }
 
     /// Maps a cents offset to the same green/orange/red tiers the gauge uses, so the big
     /// readout label below the gauge can match the needle's color.
-    static func tuningColor(forCents cents: Double?, greenThreshold: Double = 5, orangeThreshold: Double = 20) -> Color {
+    static func tuningColor(forCents cents: Double?, greenThreshold: Double = inTuneCents, orangeThreshold: Double = closeCents) -> Color {
         guard let cents else { return .secondary }
         switch abs(cents) {
         case ..<greenThreshold: return .green

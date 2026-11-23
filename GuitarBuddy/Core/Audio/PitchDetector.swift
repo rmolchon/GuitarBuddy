@@ -10,7 +10,7 @@ struct PitchDetector: PitchDetecting {
         threshold: Double = 0.15,
         minFrequency: Double = 60.0,
         maxFrequency: Double = 1500.0,
-        minimumRMS: Float = 0.01
+        minimumRMS: Float = SignalEnergy.defaultMinimumRMS
     ) {
         self.threshold = threshold
         self.minFrequency = minFrequency
