@@ -31,6 +31,9 @@ struct TunerGaugeView: View {
             }
         }
         .frame(height: 160)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Tuner")
+        .accessibilityValue(Self.accessibilityDescription(noteLabel: noteLabel, cents: cents))
     }
 
     private func guideArc(center: CGPoint, radius: CGFloat) -> some View {
@@ -100,6 +103,19 @@ struct TunerGaugeView: View {
 
     private var needleColor: Color {
         Self.tuningColor(forCents: cents)
+    }
+
+    static func isInTune(cents: Double?) -> Bool {
+        guard let cents else { return false }
+        return abs(cents) < inTuneCents
+    }
+
+    /// VoiceOver reading of the gauge, so the in-tune state isn't conveyed by colour alone.
+    static func accessibilityDescription(noteLabel: String, cents: Double?) -> String {
+        guard let cents else { return "No note detected" }
+        if isInTune(cents: cents) { return "\(noteLabel), in tune" }
+        let rounded = Int(abs(cents).rounded())
+        return "\(noteLabel), \(rounded) cents \(cents > 0 ? "sharp" : "flat")"
     }
 
     /// Maps a cents offset to the same green/orange/red tiers the gauge uses, so the big

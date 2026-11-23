@@ -30,6 +30,7 @@ struct ChordSequenceView: View {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
+            .accessibilityLabel("Remove \(chord.displayName)")
             .accessibilityIdentifier("removeChord_\(chord.displayName)")
         }
         .padding(.horizontal, 12)

@@ -22,6 +22,7 @@ struct QualityPickerView: View {
         }
         .buttonStyle(.bordered)
         .tint(isSelected ? .accentColor : .secondary)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("chordQualityButton_\(Self.identifier(for: quality))")
     }
 

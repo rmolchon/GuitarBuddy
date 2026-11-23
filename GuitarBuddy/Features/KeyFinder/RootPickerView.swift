@@ -3,7 +3,8 @@ import SwiftUI
 struct RootPickerView: View {
     @Binding var selectedRoot: PitchClass?
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 6)
+    // Adaptive so larger Dynamic Type sizes drop to fewer columns instead of truncating.
+    private let columns = [GridItem(.adaptive(minimum: 52), spacing: 8)]
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
@@ -23,6 +24,7 @@ struct RootPickerView: View {
         }
         .buttonStyle(.bordered)
         .tint(isSelected ? .accentColor : .secondary)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("chordRootButton_\(pitch.displayName)")
     }
 }

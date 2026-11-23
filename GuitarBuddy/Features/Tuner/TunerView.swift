@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TunerView: View {
     @State private var viewModel = TunerViewModel()
+    @ScaledMetric(relativeTo: .largeTitle) private var readoutSize: CGFloat = 64
 
     var body: some View {
         VStack(spacing: 24) {
@@ -19,7 +20,8 @@ struct TunerView: View {
                 .padding(.horizontal, 16)
 
                 Text(detectedNoteLabel)
-                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .font(.system(size: readoutSize, weight: .bold, design: .rounded))
+                    .accessibilityHidden(true)
                     .foregroundStyle(TunerGaugeView.tuningColor(forCents: viewModel.centsOffsetFromClosestString))
                     .contentTransition(.numericText())
             }
@@ -36,6 +38,9 @@ struct TunerView: View {
         .navigationTitle("Tuner")
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.stop() }
+        .sensoryFeedback(.success, trigger: TunerGaugeView.isInTune(cents: viewModel.centsOffsetFromClosestString)) { _, isInTune in
+            isInTune
+        }
     }
 
     private var detectedNoteLabel: String {
