@@ -39,6 +39,9 @@ final class AudioEngineController: @unchecked Sendable {
     private static let frameBufferDepth = 8
     private static let pitchBufferDepth = 16
 
+    /// Tap buffer length in frames: ~93 ms at 44.1 kHz, enough for YIN to resolve low E (82 Hz).
+    private static let tapBufferSize: AVAudioFrameCount = 4096
+
     private let engine: AVAudioEngine
     private let pitchDetector: PitchDetecting
     private let permissionProvider: RecordPermissionProviding
@@ -173,7 +176,7 @@ final class AudioEngineController: @unchecked Sendable {
         engine.prepare()
         // `self` is `Sendable` (see the class doc), so the tap and queue closures capture it
         // weakly just to avoid a retain cycle through the engine's tap, not for thread safety.
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: tapFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: Self.tapBufferSize, format: tapFormat) { [weak self] buffer, _ in
             guard let self, let frame = Self.frame(from: buffer) else { return }
             self.processingQueue.async { [weak self] in
                 self?.handle(frame)

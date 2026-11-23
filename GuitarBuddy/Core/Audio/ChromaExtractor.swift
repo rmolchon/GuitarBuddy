@@ -7,12 +7,12 @@ import Foundation
 /// frequencies (the same reason it's used for DTMF/telephony tone detection) — rather than a full FFT.
 enum ChromaExtractor {
     private static let octaveRange = 2...5
-    private static let minimumRMS: Float = 0.01
+    private static let minimumRMS = SignalEnergy.defaultMinimumRMS
 
     static func activePitchClasses(
         from samples: [Float],
         sampleRate: Double,
-        referencePitch: Double = 440.0,
+        referencePitch: Double = FrequencyToNote.standardReferencePitch,
         energyThresholdRatio: Double = 0.3
     ) -> Set<PitchClass> {
         guard SignalEnergy.hasSufficientEnergy(samples, minimumRMS: minimumRMS) else { return [] }

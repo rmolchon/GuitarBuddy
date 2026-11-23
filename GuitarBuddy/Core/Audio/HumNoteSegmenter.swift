@@ -9,7 +9,7 @@ final class HumNoteSegmenter: @unchecked Sendable {
     private let referencePitch: Double
     private let debouncer: FrameDebouncer<DetectedNote>
 
-    init(referencePitch: Double = 440.0, requiredConsecutiveFrames: Int = 2) {
+    init(referencePitch: Double = FrequencyToNote.standardReferencePitch, requiredConsecutiveFrames: Int = 2) {
         self.referencePitch = referencePitch
         self.debouncer = FrameDebouncer(requiredConsecutiveFrames: requiredConsecutiveFrames) { lhs, rhs in
             lhs.pitchClass == rhs.pitchClass && lhs.octave == rhs.octave

@@ -4,6 +4,8 @@ import Foundation
 /// both `PitchDetector` (single-fundamental YIN) and `ChromaExtractor` (polyphonic Goertzel)
 /// need the same cheap "is there anything here worth analyzing" check.
 enum SignalEnergy {
+    static let defaultMinimumRMS: Float = 0.01
+
     static func hasSufficientEnergy(_ samples: [Float], minimumRMS: Float) -> Bool {
         guard !samples.isEmpty else { return false }
         let sumOfSquares = samples.reduce(Float(0)) { $0 + $1 * $1 }

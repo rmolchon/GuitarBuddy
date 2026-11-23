@@ -6,19 +6,21 @@ import Observation
 final class TunerViewModel {
     private static let referencePitchKey = "referencePitch"
 
-    private let makeAudioEngineController: () -> AudioEngineController
-    private var audioEngineController: AudioEngineController?
-    private var pitchTask: Task<Void, Never>?
+    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let makeAudioEngineController: () -> AudioEngineController
+    @ObservationIgnored private var audioEngineController: AudioEngineController?
+    @ObservationIgnored private var pitchTask: Task<Void, Never>?
+    @ObservationIgnored private var smoother = PitchSmoother()
 
     var selectedTuning: Tuning = .standard
     private(set) var isListening = false
     private(set) var isStarting = false
     private(set) var errorMessage: String?
-    var lastDetectedFrequency: Double?
+    private(set) var lastDetectedFrequency: Double?
 
+    /// Stored (not computed over `UserDefaults`) so `@Observable` tracks it; persisted on change.
     var referencePitch: Double {
-        get { UserDefaults.standard.object(forKey: Self.referencePitchKey) as? Double ?? 440.0 }
-        set { UserDefaults.standard.set(newValue, forKey: Self.referencePitchKey) }
+        didSet { defaults.set(referencePitch, forKey: Self.referencePitchKey) }
     }
 
     var detectedNote: DetectedNote? {
@@ -38,14 +40,26 @@ final class TunerViewModel {
         return 1200 * log2(frequency / scaledTargetFrequency(at: index))
     }
 
-    init(makeAudioEngineController: @escaping () -> AudioEngineController = { AudioEngineController() }) {
+    init(
+        defaults: UserDefaults = .standard,
+        makeAudioEngineController: @escaping () -> AudioEngineController = { AudioEngineController() }
+    ) {
+        self.defaults = defaults
         self.makeAudioEngineController = makeAudioEngineController
+        self.referencePitch = defaults.object(forKey: Self.referencePitchKey) as? Double
+            ?? FrequencyToNote.standardReferencePitch
+    }
+
+    /// Feeds one raw detector reading through the smoother into the displayed frequency.
+    func ingest(pitch: Double?) {
+        lastDetectedFrequency = smoother.push(pitch)
     }
 
     func start() {
         guard !isListening, !isStarting else { return }
         isStarting = true
         errorMessage = nil
+        smoother = PitchSmoother()
         let audioEngineController = makeAudioEngineController()
         self.audioEngineController = audioEngineController
         pitchTask = Task { [weak self] in
@@ -62,7 +76,7 @@ final class TunerViewModel {
             self.isListening = true
             let stream = audioEngineController.pitchStream
             for await pitch in stream {
-                self.lastDetectedFrequency = pitch
+                self.ingest(pitch: pitch)
             }
 
             // The stream also ends when the engine is torn down mid-session (interruption,
@@ -84,10 +98,11 @@ final class TunerViewModel {
         audioEngineController = nil
         isListening = false
         isStarting = false
+        smoother = PitchSmoother()
         lastDetectedFrequency = nil
     }
 
     private func scaledTargetFrequency(at index: Int) -> Double {
-        selectedTuning.stringFrequencies[index] * (referencePitch / 440.0)
+        selectedTuning.stringFrequencies[index] * (referencePitch / FrequencyToNote.standardReferencePitch)
     }
 }
