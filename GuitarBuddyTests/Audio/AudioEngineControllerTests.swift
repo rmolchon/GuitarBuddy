@@ -196,18 +196,19 @@ final class AudioEngineControllerTests: XCTestCase {
     }
 }
 
-private final class SpyPitchDetector: PitchDetecting {
-    private(set) var receivedSamples: [Float]?
-    private(set) var receivedSampleRate: Double?
+private final class SpyPitchDetector: PitchDetecting, @unchecked Sendable {
+    private let received = LockedBox<(samples: [Float]?, sampleRate: Double?)>((nil, nil))
     private let stubbedPitch: Double?
+
+    var receivedSamples: [Float]? { received.value.samples }
+    var receivedSampleRate: Double? { received.value.sampleRate }
 
     init(stubbedPitch: Double?) {
         self.stubbedPitch = stubbedPitch
     }
 
     func detectPitch(from samples: [Float], sampleRate: Double) -> Double? {
-        receivedSamples = samples
-        receivedSampleRate = sampleRate
+        received.value = (samples, sampleRate)
         return stubbedPitch
     }
 }

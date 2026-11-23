@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class KeyFinderFlowUITests: XCTestCase {
     private func openKeyFinder(_ app: XCUIApplication) {
         app.launch()

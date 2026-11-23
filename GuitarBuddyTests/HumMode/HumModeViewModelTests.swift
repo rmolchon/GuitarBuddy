@@ -1,6 +1,7 @@
 import XCTest
 @testable import GuitarBuddy
 
+@MainActor
 final class HumModeViewModelTests: XCTestCase {
     func test_startSetsIsListeningAndAppendsNotesAsEventsArrive() async {
         // Arrange
@@ -49,29 +50,11 @@ final class HumModeViewModelTests: XCTestCase {
     private func waitUntil(_ condition: @escaping () -> Bool, timeout: TimeInterval = 1.0) async {
         let deadline = Date().addingTimeInterval(timeout)
         while !condition(), Date() < deadline {
-            try? await Task.sleep(nanoseconds: 5_000_000)
+            try? await Task.sleep(for: .milliseconds(5))
         }
     }
 }
 
 private enum HumTranscriptionTestError: Error {
     case microphoneUnavailable
-}
-
-private final class FakeAudioTranscriptionService: AudioTranscriptionService {
-    var eventsToYield: [TranscriptionEvent] = []
-    var errorToThrow: Error?
-
-    func transcribe(audioSource: AudioSource) -> AsyncThrowingStream<TranscriptionEvent, Error> {
-        AsyncThrowingStream { continuation in
-            for event in eventsToYield {
-                continuation.yield(event)
-            }
-            if let errorToThrow {
-                continuation.finish(throwing: errorToThrow)
-            } else {
-                continuation.finish()
-            }
-        }
-    }
 }
