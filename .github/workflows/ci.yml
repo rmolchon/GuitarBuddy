@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_ui_tests:
+        description: "Also run the UI test target"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 6 * * *" # nightly, runs UI tests too
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SIMULATOR: "platform=iOS Simulator,name=iPhone 16"
+
+jobs:
+  lint:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: Lint
+        run: swiftlint lint --strict --reporter github-actions-logging
+
+  unit-tests:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build and run unit tests
+        run: |
+          xcodebuild test \
+            -project GuitarBuddy.xcodeproj \
+            -scheme GuitarBuddy \
+            -destination "$SIMULATOR" \
+            -only-testing:GuitarBuddyTests \
+            -enableCodeCoverage YES \
+            -resultBundlePath build/unit.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Coverage summary
+        if: always()
+        run: xcrun xccov view --report build/unit.xcresult | head -60
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-xcresult
+          path: build/unit.xcresult
+
+  ui-tests:
+    # UI tests are slower and flakier: nightly or on manual request only.
+    if: github.event_name == 'schedule' || inputs.run_ui_tests
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Run UI tests
+        run: |
+          xcodebuild test \
+            -project GuitarBuddy.xcodeproj \
+            -scheme GuitarBuddy \
+            -destination "$SIMULATOR" \
+            -only-testing:GuitarBuddyUITests \
+            -resultBundlePath build/ui.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-xcresult
+          path: build/ui.xcresult
