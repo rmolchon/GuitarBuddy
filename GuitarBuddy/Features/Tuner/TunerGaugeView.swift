@@ -119,7 +119,7 @@ struct TunerGaugeView: View {
     }
 
     private func point(angleDegrees: Double, radius: CGFloat, center: CGPoint) -> CGPoint {
-        let radians = angleDegrees * .pi / 180
+        let radians = CGFloat(angleDegrees * .pi / 180)
         return CGPoint(x: center.x + radius * sin(radians), y: center.y - radius * cos(radians))
     }
 }
