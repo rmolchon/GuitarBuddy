@@ -49,6 +49,18 @@ final class ChromaExtractorTests: XCTestCase {
         XCTAssertTrue(activePitchClasses.isEmpty)
     }
 
+    func test_aSingleToneIsNotOutvotedByAnOctaveDoubledRoot() {
+        // Arrange: C in three octaves (an open C chord's doubled root) plus one quieter G.
+        let samples = mix([
+            sineWave(frequency: 130.81), sineWave(frequency: 261.63), sineWave(frequency: 523.25),
+            sineWave(frequency: 196.00, amplitude: 0.12)
+        ])
+        // Act
+        let activePitchClasses = ChromaExtractor.activePitchClasses(from: samples, sampleRate: sampleRate)
+        // Assert
+        XCTAssertEqual(activePitchClasses, [.c, .g])
+    }
+
     private func sineWave(frequency: Double, amplitude: Double = 0.25) -> [Float] {
         let sampleCount = Int(sampleRate * duration)
         return (0..<sampleCount).map { i in

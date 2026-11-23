@@ -21,8 +21,15 @@ enum SyntheticInstrument {
         /// Sung vowel: sustained, no decay.
         static let voice = Timbre(harmonicAmplitudes: [1.0, 0.6, 0.35, 0.2], decaySeconds: .infinity)
 
+        /// Open G (196 Hz) and above are plain strings on a standard set; the three lowest are wound.
+        static let woundCutoff = 190.0
+
+        /// A brighter, faster-decaying alternative so tests don't overfit one timbre.
+        static let brightWoundString = Timbre(harmonicAmplitudes: [0.5, 1.0, 0.8, 0.6, 0.4, 0.3], decaySeconds: 0.7)
+        static let brightPlainString = Timbre(harmonicAmplitudes: [0.8, 0.8, 0.5, 0.4, 0.3], decaySeconds: 0.6)
+
         static func forFrequency(_ frequency: Double) -> Timbre {
-            frequency < 200 ? woundString : plainString
+            frequency < woundCutoff ? woundString : plainString
         }
     }
 
@@ -58,12 +65,18 @@ enum SyntheticInstrument {
     }
 
     /// A strum: each string starts `stagger` seconds after the previous, summed.
-    static func strum(frequencies: [Double], duration: Double, stagger: Double = 0.012) -> [Float] {
+    static func strum(
+        frequencies: [Double],
+        duration: Double,
+        stagger: Double = 0.012,
+        wound: Timbre = .woundString,
+        plain: Timbre = .plainString
+    ) -> [Float] {
         let count = Int(sampleRate * duration)
         var mix = [Float](repeating: 0, count: count)
         for (stringIndex, frequency) in frequencies.enumerated() {
             let start = Int(sampleRate * stagger * Double(stringIndex))
-            let pluck = note(frequency: frequency, duration: duration, timbre: .forFrequency(frequency), amplitude: 0.25)
+            let pluck = note(frequency: frequency, duration: duration, timbre: frequency < Timbre.woundCutoff ? wound : plain, amplitude: 0.25)
             for index in 0..<(count - start) {
                 mix[start + index] += pluck[index]
             }
