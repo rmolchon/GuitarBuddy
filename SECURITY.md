@@ -1,21 +1,19 @@
 # Security Policy
 
-## Supported Versions
+GuitarBuddy is a hobby project. It has no backend, no accounts and no third-party
+dependencies, and it never records audio to disk or sends it anywhere: microphone input is
+analysed on-device and discarded.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Supported versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Only the latest commit on `main` is supported. There are no maintained release branches.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Please report suspected vulnerabilities privately rather than in a public issue: use
+GitHub's **Security → Report a vulnerability** on this repository. Include the affected
+area, steps to reproduce, and the impact you expect.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+This is a personal project, so there is no guaranteed response time; I'll aim to
+acknowledge a report within about a week and will say whether I consider it a valid
+issue and what I plan to do about it.

@@ -5,7 +5,7 @@ This guide covers getting GuitarBuddy building, running, and testing locally, us
 ## Prerequisites
 
 - **macOS**, since this is a native iOS app — there is no cross-platform build path.
-- **[Xcode](https://apps.apple.com/us/app/xcode/id497799835) 15+**, the **full app**, not just the Command Line Tools. `xcodebuild`, the iOS Simulator, and asset/Info.plist compilation all require the full Xcode toolchain. If you've only ever installed the Command Line Tools (e.g. via `xcode-select --install` or Homebrew pulling them in as a dependency), builds will fail — see [Troubleshooting](#troubleshooting) below.
+- **[Xcode](https://apps.apple.com/us/app/xcode/id497799835) 16+** (the project uses Swift 6 language mode), the **full app**, not just the Command Line Tools. `xcodebuild`, the iOS Simulator, and asset/Info.plist compilation all require the full Xcode toolchain. If you've only ever installed the Command Line Tools (e.g. via `xcode-select --install` or Homebrew pulling them in as a dependency), builds will fail — see [Troubleshooting](#troubleshooting) below.
 - **[XcodeGen](https://github.com/yonaskolb/XcodeGen)** — `brew install xcodegen`. The `.xcodeproj` is generated from `project.yml` and is not committed to the repo.
 - An **iOS 17+ Simulator runtime** installed (Xcode → Settings → Platforms → iOS, if not already present from your Xcode install).
 - **(Optional, for editing in VS Code)** [Visual Studio Code](https://code.visualstudio.com/) with the official **Swift** extension. Search "Swift" in the Extensions view and install the one published by the Swift project / Swift Server Work Group — it provides SourceKit-LSP-backed autocomplete, jump-to-definition, and inline diagnostics for `.swift` files. It does not replace `xcodebuild` for actually building or testing an iOS app target (see below).
@@ -24,7 +24,7 @@ This creates/updates `GuitarBuddy.xcodeproj` in the repo root.
 
 1. `xcodegen generate` (if you haven't already, or just changed `project.yml`)
 2. `open GuitarBuddy.xcodeproj`
-3. In the scheme selector, choose the **GuitarBuddy** scheme and an iOS Simulator destination (e.g. "iPhone 17")
+3. In the scheme selector, choose the **GuitarBuddy** scheme and an iOS Simulator destination (e.g. "iPhone 16")
 4. **⌘B** to build, **⌘R** to build and run
 
 The first time you launch the **Tuner** tab on a real device, iOS will prompt for microphone access (`NSMicrophoneUsageDescription` is already set in `Info.plist`). In the Simulator there is no real microphone route, so the Tuner will show a friendly "Microphone input isn't available" message instead of detecting pitch — that's expected simulator behavior, not a bug (see `AudioEngineControllerError` in `AudioEngineController.swift`).
@@ -40,9 +40,9 @@ VS Code does not have its own iOS build/run pipeline — under the hood, buildin
    - Open `GuitarBuddy.xcodeproj` in Xcode and run it there (fastest for interactive UI work), or
    - Build via `xcodebuild` from the VS Code terminal, then install and launch on a booted simulator manually:
      ```bash
-     xcrun simctl boot "iPhone 17"   # skip if a simulator is already booted
+     xcrun simctl boot "iPhone 16"   # skip if a simulator is already booted
      open -a Simulator
-     xcodebuild -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17' \
+     xcodebuild -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16' \
        -derivedDataPath .build/DerivedData build
      xcrun simctl install booted .build/DerivedData/Build/Products/Debug-iphonesimulator/GuitarBuddy.app
      xcrun simctl launch booted com.guitarbuddy.app
@@ -64,14 +64,14 @@ If you want **⇧⌘B** (Run Build Task) to work in VS Code, add a `.vscode/task
     {
       "label": "Build (Simulator)",
       "type": "shell",
-      "command": "xcodebuild build -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17'",
+      "command": "xcodebuild build -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16'",
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": "$xcode"
     },
     {
       "label": "Test (all)",
       "type": "shell",
-      "command": "xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17'",
+      "command": "xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16'",
       "group": { "kind": "test", "isDefault": true },
       "problemMatcher": "$xcode"
     }
@@ -96,10 +96,10 @@ xcodegen generate
 xcodebuild clean -scheme GuitarBuddy
 
 # Build only
-xcodebuild build -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild build -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16'
 
 # Build and run all tests (unit + UI)
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 You can target a destination by UDID instead of name if you have multiple simulators with the same device type:
@@ -119,22 +119,22 @@ GuitarBuddy has two test targets, with deliberately different scopes (see `CLAUD
 
 ```bash
 # Everything (unit + UI)
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16'
 
 # Unit tests only (fast — good for a tight edit/test loop)
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16' \
   -only-testing:GuitarBuddyTests
 
 # UI tests only
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16' \
   -only-testing:GuitarBuddyUITests
 
 # A single test class
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16' \
   -only-testing:GuitarBuddyTests/PitchDetectorTests
 
 # A single test method
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16' \
   -only-testing:GuitarBuddyTests/PitchDetectorTests/test_detectsA4Frequency
 ```
 
@@ -163,7 +163,7 @@ Or just open the `.xcresult` bundle in Finder (double-click) to view it in Xcode
 Enable coverage collection with `-enableCodeCoverage YES`:
 
 ```bash
-xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild test -scheme GuitarBuddy -destination 'platform=iOS Simulator,name=iPhone 16' \
   -enableCodeCoverage YES
 ```
 
